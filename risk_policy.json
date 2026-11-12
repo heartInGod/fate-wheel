@@ -1,0 +1,27 @@
+{
+ "version": 1,
+ "mode": "shadow",
+ "_说明": "B/C 新数值均为隔离对照假设，未经实验与明确启用不改变买卖建议。A 的逻辑退出由逐股契约决定，不使用本文件的默认比例。",
+ "scenarios": {
+  "bear": {"eps_factor": 0.8, "pe_factor": 0.8},
+  "base": {"eps_factor": 1.0, "pe_factor": 1.0},
+  "bull": {"eps_factor": 1.1, "pe_factor": 1.1}
+ },
+ "limits": {"single_loss_frac": 0.03, "portfolio_loss_frac": 0.15, "group_weight_frac": 0.35, "cash_floor_frac": 0.05},
+ "drawdown": {"watch_frac": 0.08, "reduce_frac": 0.12, "exit_frac": 0.18, "recovery_frac": 0.04},
+ "stress": {"market_down_frac": 0.3, "group_down_frac": 0.4},
+ "etf_proxies": {
+  "159813": {"industry": "半导体", "source": "profiles/159813.md", "quality": "index_proxy"},
+  "159327": {"industry": "半导体", "source": "profiles/159327.md", "quality": "index_proxy"},
+  "562500": {"industry": "自动化设备", "source": "rules_params.json:sleeves.core.industry.policy.etf_industry", "quality": "theme_proxy"},
+  "159659": {"factor": "海外成长", "source": "profiles/159659.md", "quality": "index_proxy"}
+ },
+ "factor_rules": {"电子产业链": ["半导体", "电子", "PCB"]},
+ "experiments": {
+  "trend": {"ma_days": 60, "confirm_days": 3, "exit_fraction": 0.5, "recover_days": 3},
+  "profit": {"activate_gain_frac": 0.3, "trailing_drop_frac": 0.15, "exit_fraction": 0.5},
+  "time": {"review_days": 120, "min_return_frac": 0.05, "exit_fraction": 0.5},
+  "min_observation_days": 252,
+  "slippage_bps": 10
+ }
+}

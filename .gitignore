@@ -1,0 +1,47 @@
+# ---- Python 运行产物 ----
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# ---- 抓取缓存与快照（可重新拉取，体积 35MB 里占绝大部分）----
+cache/
+
+# ---- 日志与评估记录（含逐笔操作细节，属会话产物）----
+logs/
+
+# ---- 运行时报告 ----
+reports/
+
+# ---- 手工备份 ----
+backups/
+
+# ---- 由脚本生成的看板（body 2.6MB，跑 build_dashboard.py 可再生）----
+dashboard.html
+
+# ---- 抓取后自动刷新的档案（脚本维护，非源码）----
+profiles/
+announcements/
+
+# ---- macOS / IDE ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ---- 密钥与本地配置（本项目当前没有，预留防止误提交）----
+.env
+.env.*
+*.key
+*.pem
+*_rsa
+credentials*
+secret*
+config.local.*
