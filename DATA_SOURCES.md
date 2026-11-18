@@ -208,10 +208,10 @@ python3 main.py test                                   # 引擎/记录/评估/EV
 
 ## 休眠兜底（定时采集 + 错过时段补跑）
 
-MiniMax Code 的 cron 调度器跑在 **GUI 进程**里（应用是 Electron，没有 headless CLI）。机器睡眠时：
+定时任务现在由 **WorkBuddy 的原生 automation** 调度（原 MiniMax Code 已停用）。WorkBuddy 调度器同样跑在 GUI 进程里，机器睡眠时：
 
 - `pmset` 的 `sleep 0` 挡不住**合盖睡眠**——没有外接显示器时合盖必然进入硬件深睡，软件层面无法阻止。
-- 调度器在应用启动时重算 `next_run`，把已错过的触发点**直接跳过，不补跑**（可在 `~/.minimax/v2/sqlite/runtime-state.sqlite` 的 `local_runtime_v2_scheduler_jobs.updated_at_ms` 看到它等于应用启动时刻）。
+- GUI 调度器在应用启动时重算下次运行时间，把已错过的触发点直接跳过、不补跑。
 
 因此装两个 launchd agent 兜底（`./setup/setup_sleep_guard.sh install`）：
 
@@ -240,7 +240,7 @@ python3 main.py catchup                                          # 补写
 ## 迁移 / 重新配置
 
 1. 把整个 `fate_wheel` 目录拷到新位置（新电脑或新路径都可以）。
-2. 运行 `./setup.sh`（可加 `--check` 验证数据源、`--test-feishu` 发测试消息、`--install-deps` 自动装 python/node/lark-cli、`--open-id ou_xxx` 换飞书接收人）。脚本会检查环境、建目录、把 `intraday_rules.md` 和 `setup/crons.json` 中的旧路径换成新路径、安装 `fate` 命令。
+2. 运行 `./setup.sh`（可加 `--check` 验证数据源、`--test-feishu` 发测试消息、`--install-deps` 自动装 python/node/lark-cli、`--open-id ou_xxx` 换飞书接收人）。脚本会检查环境、建目录、把 `intraday_rules.md` 和 `setup/crons.json` 中的旧路径换成新路径、重新派生 WorkBuddy 任务定义、安装 `fate` 命令。
 3. 新电脑上的飞书：`lark-cli config init` 配置机器人应用（app-id / app-secret）。
-4. 定时任务：脚本生成 `setup/CRON_SETUP_PROMPT.md` 并复制到剪贴板，在 MiniMax Code 中新建会话（工作目录选项目目录）粘贴即可重建 6 个任务（09:00 盘前、盘中 4 条、16:00 收盘评估）。
-5. `setup/crons.json` 是定时任务的备份；以后修改定时任务的 prompt 或时间时要同步更新它。
+4. 定时任务：脚本生成 `setup/WORKBUDDY_SETUP_PROMPT.md` 并复制到剪贴板，在 WorkBuddy 里新建会话粘贴即可重建 9 条 automation（盘前 09:00、盘中 6 条按分钟偏移、收盘评估 16:00、周五周报 17:00）。工具会删除所有「【fate-wheel】」前缀的旧任务再重建，不影响其它任务。
+5. 任务定义的单一数据源是 `setup/workbuddy/automations.json`（含 9 条 name/rrule/status）和 `setup/workbuddy/prompts/*.txt`（每条的完整 prompt）。它们由 `setup/workbuddy/_generate.py` 从 `setup/crons.json` 派生。以后改调度或 prompt：先改 `setup/crons.json`，跑 `python3 setup/workbuddy/_generate.py` 重新派生，再在 WorkBuddy 里重建任务。`setup/crons.json` 的原始 prompt 是 MiniMax 时代文案，派生时会自动加 WSL 环境头、删会话归档步骤、加盘中时点判断。

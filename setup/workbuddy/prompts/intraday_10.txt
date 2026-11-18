@@ -1,0 +1,24 @@
+【运行环境 · 必读】
+你现在由 WorkBuddy 定时任务触发执行（不是 MiniMax Code）。工作目录与所有数据都在 WSL 里：
+  - WSL 项目路径：/home/fox/projects/fate-wheel
+  - 所有 `python3 main.py ...`、`date`、文件读写命令，一律通过 WSL 执行：
+      wsl.exe -e bash -lc 'cd /home/fox/projects/fate-wheel && <命令>'
+    例：wsl.exe -e bash -lc 'cd /home/fox/projects/fate-wheel && python3 main.py signals'
+  - 联网搜索用 WebSearch 工具（原文里的 `web_search` 即指它；freshness=day/week）。
+  - 原 prompt 里的 `mavis` / `session` / `task_output` 是 MiniMax Code 专有工具，WorkBuddy 没有：
+      · "task_output 等结果" → 直接等待命令跑完即可（命令是同步执行的）。
+      · 会话归档相关步骤已删除，无需处理。
+  - 飞书：优先用 `lark-cli`（在 WSL 里执行）。若未安装或报 auth 错误，
+    不要反复重试，在当天日志注明「飞书未发送（lark-cli 不可用）」即可，任务其余部分照常完成。
+  - 下文出现的相对路径（logs/、data/、cache/ 等）都相对 /home/fox/projects/fate-wheel。
+
+【时点判断 · 先做这一步】
+本任务在每小时的第 10 分钟被触发，但只负责以下小时：10/11/13/14。
+请先执行 wsl.exe -e bash -lc 'date +%H' 取得当前小时（24 小时制，返回如 10）：
+  - 若当前小时不在 { 10,11,13,14 } 内，或今天是周末/节假日休市，立即结束本次任务，
+    不写日志、不发消息、不运行任何脚本。
+  - 若在有效小时内，继续下面的正文。
+注意：WorkBuddy 的最小调度粒度是"每小时"，所以本任务每小时都会触发一次，
+靠这里的时间判断还原原来"每 10 分钟、仅交易时段"的节奏，不要去掉这段判断。
+
+读取并严格执行 /home/fox/projects/fate-wheel/intraday_rules.md 中的盘中分析规则。有新信号则飞书提醒张小凡；无论有无信号都按规则把本次结论追加到 logs/yyyyMMdd.md；休市则直接结束。注意：行情输出里的 available 已按 T+1 规则推导到今天，是今天真正可卖的数量，直接用作卖出建议的上限，不要再手工扣减冻结份额。

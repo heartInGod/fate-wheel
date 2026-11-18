@@ -6,8 +6,8 @@
 #   ./setup/setup_sleep_guard.sh wake         只设置/续期定时唤醒（需要 sudo）
 #   ./setup/setup_sleep_guard.sh status       查看状态
 #
-# 背景：MiniMax Code 的 cron 调度器跑在 GUI 进程里，机器合盖睡眠期间到点的任务会被
-# 静默跳过且不补跑。本脚本装两个 launchd agent 兜底：
+# 背景：定时任务调度器（WorkBuddy automation 等）跑在 GUI 进程里，机器合盖睡眠期间
+# 到点的任务会被静默跳过且不补跑。本脚本装两个 launchd agent 兜底：
 #   com.fatewheel.collect  每个分析时点前 1 分钟采集行情快照并归档
 #   com.fatewheel.catchup  每 10 分钟 + 开机时检查缺失时段并补写日志
 # 另外用 pmset 在每个分析时点前尝试唤醒机器（尽力而为，合盖深睡时可能失效）。

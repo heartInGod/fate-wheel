@@ -273,49 +273,64 @@ if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
   fi
 fi
 
-# ---------------------------------------------------------------- 6. 定时任务
-step "6. 定时任务（需在 MiniMax Code 中创建）"
-OUT="$PROJECT/setup/CRON_SETUP_PROMPT.md"
-python3 - "$PROJECT" "$PLATFORM" > "$OUT" <<'PY'
-import json, sys
-project, platform = sys.argv[1], sys.argv[2]
-d = json.load(open(f"{project}/setup/crons.json", encoding="utf-8"))
-names = "、".join([t["cron_name"] for t in d["tasks"]] + d.get("legacy_cron_names", []))
+# ---------------------------------------------------------------- 6. 定时任务（WorkBuddy）
+step "6. 定时任务（在 WorkBuddy 中安装）"
+OUT="$PROJECT/setup/WORKBUDDY_SETUP_PROMPT.md"
 
-if platform == "macos":
-    guard = f"""另外安装「休眠兜底」组件（重要）：MiniMax Code 的 cron 调度器跑在 GUI 进程里，机器合盖睡眠时到点的任务会被静默跳过且不补跑。请执行：
+# 先确保 WorkBuddy 任务定义已从 crons.json 派生（幂等：已存在则跳过生成）
+if [ ! -f "$PROJECT/setup/workbuddy/automations.json" ]; then
+  python3 "$PROJECT/setup/workbuddy/_generate.py" >/dev/null 2>&1 || warn "workbuddy 任务定义生成失败，请检查 setup/workbuddy/_generate.py"
+fi
 
-   cd {project} && ./setup/setup_sleep_guard.sh install
+python3 - "$PROJECT" > "$OUT" <<'PY'
+import json, sys, os, re
+project = sys.argv[1]
+# WorkBuddy 调度器在 Windows 侧，看项目用的是 W:/ 挂载路径（不是 WSL 的 \\wsl.localhost 路径）。
+# 从 WSL 路径 /home/fox/... 推出 WorkBuddy 侧的 W:/home/fox/...：优先用环境变量覆盖，
+# 否则按常见布局把 /home/... 映射为 W:/home/...。
+win_project = os.environ.get("FATE_WIN_PROJECT", "")
+if not win_project:
+    m = re.match(r"^(/home/[^/]+/.*)$", project)
+    win_project = "W:" + m.group(1) if m else project
+d = json.load(open(f"{project}/setup/workbuddy/automations.json", encoding="utf-8"))
+rows = "\n".join(
+    f"  - {a['name']}: `{a['rrule']}`"
+    for a in d["automations"]
+)
+print(f"""请在 WorkBuddy 里为持仓盯盘项目重建定时任务。
 
-它会加载两个 launchd agent：
-   - com.fatewheel.collect   每个分析时点前 1 分钟采集行情快照到 cache/snapshots/（保证错过时段后数据还在）
-   - com.fatewheel.catchup   每 10 分钟 + 每次唤醒检测缺失时段并补写 logs/yyyyMMdd.md
+## 背景
+项目原先把定时任务托管在 MiniMax Code，现 MiniMax Code 已停用，改为 WorkBuddy 原生定时任务（automation）。
+任务定义与逐条 prompt 已在项目内生成好，不要自己重新设计调度；fate-wheel 之外的任务一律不要动。
 
-其中「设置定时唤醒」需要 sudo 密码。你没有密码时会跳过这一步，agent 照常装好；请提醒用户在本机终端自己执行：
-   cd {project} && ./setup/setup_sleep_guard.sh wake
-（唤醒点覆盖未来 30 天，到期要重跑 wake 续期；合盖且没接外接显示器时唤醒可能失效，补跑才是真正的兜底。）
+## 要创建的任务（共 {d['automation_count']} 条，全部 ACTIVE）
+{rows}
 
-装完用 ./setup/setup_sleep_guard.sh status 确认：两个 agent 已加载，并列出定时唤醒情况。"""
-else:
-    guard = f"""当前平台为 {platform}：休眠兜底脚本 setup/setup_sleep_guard.sh 依赖 macOS 的 launchd / pmset，在此平台不可用，已跳过。
-MiniMax Code 的 cron 调度器在机器睡眠时到点的任务仍可能被静默跳过；若发现日志缺失，可手动补跑：
+说明：WorkBuddy 的 RRULE 不支持一条规则里写多个时点（BYHOUR/BYMINUTE 只能是单个整数），
+所以原来"每 10 分钟、覆盖多个小时"的盘中任务，按"分钟偏移"合并成了 6 条（:00/:10/:20/:30/:40/:50），
+每条每小时触发一次，由 prompt 里的【时点判断】还原原来只在交易时段、每 10 分钟分析的节奏。
+15:00 收盘并入 :00 那一条（按 intraday_rules.md 第 7 条写收盘小结）。
 
-   cd {project} && python3 main.py catchup --dry-run    # 只看缺哪些时段
-   cd {project} && python3 main.py catchup              # 补写 logs/yyyyMMdd.md
-   cd {project} && python3 main.py snapshot             # 补采当前时点行情快照
+## 执行步骤
+1. 先用 automation 列表工具查看现有任务；名称以「【fate-wheel】」开头的旧任务全部删除，避免重复运行。
+   注意只删 fate-wheel 前缀的，不要动其它任务。
+2. 读取 `{win_project}/setup/workbuddy/automations.json`，对 automations 里的每一条：
+   - 用 automation 创建工具（recurring）创建，参数取文件里的 `name`、`rrule`、`status`；
+   - `prompt` 由你现场生成，模板固定为下面这段（把 {{文件}} 换成该条的 `prompt_file`）：
 
-建议在系统电源设置里避免机器在分析时段睡眠，以减少漏跑。"""
+     请先用 Read 工具完整读取 `{win_project}/setup/workbuddy/prompts/{{文件}}`，
+     然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。
 
-print(f"""请为持仓盯盘项目重建定时任务，项目目录：{project}
+   - 工作目录设为 `{win_project}`（Windows 路径）。
+3. 创建完核对：共 {d['automation_count']} 条、都是 ACTIVE，并列出各条下次运行时间。
 
-1. 先用 cron_read(view=list) 查看现有任务；名称为下列之一的旧任务（{names}）先用 cron_delete 删除，避免重复运行。
-2. 读取 {project}/setup/crons.json，对 tasks 里的每一条调用 cron_create，参数逐字使用文件里的值：
-   cron_name、prompt、schedule、timezone、session、agent_name，并额外传 project="{project}"。prompt 不要改写或摘要。
-3. 创建完用 cron_read(view=list) 核对：共 {len(d['tasks'])} 条、project 都是 {project}、enabled=true，列出各任务下次运行时间。
-
-{guard}""")
+## 环境说明
+- 项目代码与数据在 WSL：`{d['wsl_project']}`；WorkBuddy 调度器在 Windows 侧，
+  所以每条 prompt 都要求 agent 用 `wsl.exe -e bash -lc` 执行项目命令。
+- 飞书通知依赖 lark-cli（当前未安装）；未装时任务会在日志注明并跳过通知，不影响分析与记录。
+- 时区：WorkBuddy RRULE 用系统本地时间（Asia/Shanghai），无需额外设置。""")
 PY
-ok "已生成 setup/CRON_SETUP_PROMPT.md"
+ok "已生成 setup/WORKBUDDY_SETUP_PROMPT.md"
 if command -v pbcopy >/dev/null 2>&1; then
   pbcopy < "$OUT" && ok "指令已复制到剪贴板"
 elif command -v clip.exe >/dev/null 2>&1; then
@@ -323,18 +338,18 @@ elif command -v clip.exe >/dev/null 2>&1; then
 elif command -v xclip >/dev/null 2>&1; then
   xclip -selection clipboard < "$OUT" && ok "指令已复制到剪贴板（xclip）"
 fi
-echo "  → 在 MiniMax Code 里新建会话（工作目录选 ${PROJECT}），粘贴下面这段指令："
+echo "  → 在 WorkBuddy 里新建会话，粘贴下面这段指令（或直接用 WORKBUDDY_SETUP_PROMPT.md）："
 echo "  ------------------------------------------------------------"
 sed 's/^/  /' "$OUT"
 echo "  ------------------------------------------------------------"
 
-step "7. 休眠兜底（仅 macOS 适用）"
+step "7. 漏跑补兜（sleep guard，仍建议）"
 if [ "$PLATFORM" = "macos" ]; then
   if launchctl list 2>/dev/null | grep -q "com.fatewheel.catchup"; then
     ok "已安装（com.fatewheel.collect / com.fatewheel.catchup）"
   else
-    warn "未安装。机器合盖睡眠时，MiniMax Code 的定时任务会被静默跳过且不补跑。"
-    echo "  → 执行 ./setup/setup_sleep_guard.sh install  安装（定时唤醒那步需要 sudo 输密码；之后每 30 天跑一次 ./setup/setup_sleep_guard.sh wake 续期）"
+    warn "未安装。机器合盖睡眠时定时任务可能被跳过且不补跑。"
+    echo "  → 执行 ./setup/setup_sleep_guard.sh install  安装（定时唤醒那步需要 sudo 密码；之后每 30 天跑一次 ./setup/setup_sleep_guard.sh wake 续期）"
     echo "  → 装完用 ./setup/setup_sleep_guard.sh status  查看状态"
   fi
 else
