@@ -21,7 +21,7 @@
   python3 main.py test            运行全部单元测试
 
 子命令通过 runpy 以 __main__ 方式加载对应脚本，脚本原有入口逻辑零改动；
-数据路径由 fw/paths.py 统一提供，与脚本所在目录无关。
+数据路径由 paths.py 统一提供，与脚本所在目录无关。
 """
 import os
 import runpy
@@ -30,35 +30,35 @@ import sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
 
-from fw.paths import setup_sys_path
+from paths import setup_sys_path
 
 setup_sys_path()
 
 # 子命令 -> (相对项目根的脚本路径, 说明)
 COMMANDS = {
     # 核心计算 / 估值 / 风控
-    "signals":     ("fw/core/signals_engine.py",  "盘中规则引擎：算候选信号"),
-    "core":        ("fw/core/core_value.py",      "长线价值仓：目标价与复查"),
-    "etf":         ("fw/core/etf_value.py",       "ETF 指数估值法"),
-    "industry":    ("fw/core/industry_heat.py",   "行业景气分"),
-    "policy":      ("fw/core/policy_signal.py",   "政策信号分"),
-    "risk-core":   ("fw/core/risk_core.py",       "风险核心"),
-    "risk-exp":    ("fw/core/risk_experiment.py", "风险实验"),
-    "portfolio":   ("fw/core/portfolio_risk.py",  "组合风险（影子模式）"),
+    "signals":     ("core/signals_engine.py",  "盘中规则引擎：算候选信号"),
+    "core":        ("core/core_value.py",      "长线价值仓：目标价与复查"),
+    "etf":         ("core/etf_value.py",       "ETF 指数估值法"),
+    "industry":    ("core/industry_heat.py",   "行业景气分"),
+    "policy":      ("core/policy_signal.py",   "政策信号分"),
+    "risk-core":   ("core/risk_core.py",       "风险核心"),
+    "risk-exp":    ("core/risk_experiment.py", "风险实验"),
+    "portfolio":   ("core/portfolio_risk.py",  "组合风险（影子模式）"),
     # 评估 / 校准 / 记录
-    "calibrate":   ("fw/engine/calibrate.py",     "动态阈值校准"),
-    "evaluate":    ("fw/engine/evaluate.py",      "收盘建议评估"),
-    "record":      ("fw/engine/record_signal.py", "信号采纳/否决/发送记录"),
-    "record-op":   ("fw/engine/record_op.py",     "实际成交记录"),
+    "calibrate":   ("engine/calibrate.py",     "动态阈值校准"),
+    "evaluate":    ("engine/evaluate.py",      "收盘建议评估"),
+    "record":      ("engine/record_signal.py", "信号采纳/否决/发送记录"),
+    "record-op":   ("engine/record_op.py",     "实际成交记录"),
     # 数据获取
-    "fetch":       ("fw/data/fetch_data.py",      "统一数据获取入口"),
+    "fetch":       ("fetch_data.py",           "统一数据获取入口"),
     # 持仓前提
-    "thesis":      ("fw/thesis.py",               "维护持仓定位前提"),
+    "thesis":      ("thesis.py",               "维护持仓定位前提"),
     # Agent 定时任务辅助
-    "catchup":     ("fw/agent/catchup.py",        "补齐错过的分析时段"),
-    "snapshot":    ("fw/agent/collect_snapshot.py", "计划时点行情快照归档"),
-    "premarket":   ("fw/agent/premarket_brief.py", "盘前简报"),
-    "dashboard":   ("fw/agent/build_dashboard.py", "生成看板 dashboard.html"),
+    "catchup":     ("agent/catchup.py",        "补齐错过的分析时段"),
+    "snapshot":    ("agent/collect_snapshot.py", "计划时点行情快照归档"),
+    "premarket":   ("agent/premarket_brief.py", "盘前简报"),
+    "dashboard":   ("agent/build_dashboard.py", "生成看板 dashboard.html"),
 }
 
 

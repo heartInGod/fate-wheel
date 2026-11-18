@@ -2,7 +2,7 @@
 import os as _os, sys as _sys
 _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _sys.path.insert(0, _root)
-from fw.paths import setup_sys_path as _ssp; _ssp()
+from paths import setup_sys_path as _ssp; _ssp()
 """规则引擎 / 信号记录 / 收盘评估的离线单元测试：python3 test_signals.py
 
 不联网、不碰真实数据：信号目录和快照目录都指向临时目录，行情用假数据替换。
@@ -14,8 +14,8 @@ import os
 import sys
 import tempfile
 
-from fw.paths import ROOT, setup_sys_path; setup_sys_path()
-from fw.datamul import data_path
+from paths import ROOT, setup_sys_path; setup_sys_path()
+from datamul import data_path
 
 import evaluate as ev
 import record_signal as rs

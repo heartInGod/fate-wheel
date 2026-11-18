@@ -2,7 +2,7 @@
 import os as _os, sys as _sys
 _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _sys.path.insert(0, _root)
-from fw.paths import setup_sys_path as _ssp; _ssp()
+from paths import setup_sys_path as _ssp; _ssp()
 """长线风控集成回归；全部模拟输入，不联网、不修改业务数据。"""
 import copy
 import datetime
