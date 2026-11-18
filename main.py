@@ -64,7 +64,7 @@ COMMANDS = {
     "catchup":     ("agent/catchup.py",        "补齐错过的分析时段"),
     "snapshot":    ("agent/collect_snapshot.py", "计划时点行情快照归档"),
     "premarket":   ("agent/premarket_brief.py", "盘前简报"),
-    "dashboard":   ("agent/build_dashboard.py", "生成看板 dashboard.html"),
+    "dashboard":   ("agent/build_dashboard.py", "生成看板数据 dashboard.json"),
 }
 
 

@@ -160,12 +160,27 @@ tr.held td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
 </main>
 
 <script>
-const D = /*__DASHBOARD_DATA__*/null;
+/* 看板数据由 Python 侧 main.py dashboard 聚合并写入 data/derived/dashboard.json。
+   本页通过 HTTP fetch 加载（需从项目根启动本地服务，见 web/README.md）。 */
+let D = null;
+async function loadDashboardData(){
+  try{
+    const r = await fetch('../data/derived/dashboard.json', {cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    D = await r.json();
+    return true;
+  }catch(e){
+    document.getElementById('view').innerHTML =
+      '<div class="card empty"><b>数据加载失败</b>无法读取 data/derived/dashboard.json：'+String(e&&e.message||e)+
+      '<br>请先运行 <code>python3 main.py dashboard</code> 生成数据，并通过本地 HTTP 服务打开本页（不能直接双击文件）。</div>';
+    return false;
+  }
+}
 </script>
 <script>
-(function(){
+(async function(){
 "use strict";
-if(!D){document.getElementById('view').innerHTML='<div class="card empty"><b>没有数据</b>请运行 python3 build_dashboard.py 生成看板。</div>';return;}
+if(!(await loadDashboardData()))return;
 
 /* ---------------- utils ---------------- */
 const $=s=>document.querySelector(s);

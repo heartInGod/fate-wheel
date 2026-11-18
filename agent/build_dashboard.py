@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""生成持仓看板 dashboard.html（单文件，可离线打开；联网时页面会自动刷新实时行情）。
+"""生成看板数据 dashboard.json（供 web/dashboard.html 通过 HTTP fetch 加载）。
 
-  python3 main.py dashboard            # 用 cache/snapshot_latest.json；没有缓存时先跑一次 snapshot
-  python3 main.py dashboard fresh=true # 强制重新拉一次盘中 snapshot
+  python3 main.py dashboard            # 用 cache/snapshot_latest.json 聚合，写 data/derived/dashboard.json
+  python3 main.py dashboard fresh=true # 强制重新拉一次盘中 snapshot 后再聚合
 
-数据来源：holdings.csv、watchlist.csv、account.csv、operations.csv、cache/snapshot_latest.json、logs/signals/、
+输出：data/derived/dashboard.json（含全部前端展示所需的结构化数据）。
+前端入口是 web/dashboard.html，需通过本地 HTTP 服务访问（见 web/README.md 或 setup.sh 的 serve 命令）；
+浏览器中打开后，页面 fetch ../data/derived/dashboard.json 渲染，并实时拉取行情。
 profiles/、announcements/、logs/、thesis.json（定位前提）、cache/commodity.json（关联商品价格，盘前快照写入），日 K / 技术位 / 汇率读 cache/ 本地缓存（不联网；fresh=true 时才联网刷新），页面打开后再实时拉取；「长线 & 政策」页读 core_auto.json
 （core_value.py review 生成：分仓、目标价、行业景气 = 基础分 + 衰减政策分、个股建议总表）和最新一期
 research/policy/*_政策信号报告.md。
@@ -27,8 +29,8 @@ from datasources.holdings import ROOT, account, holdings
 from datamul import data_path
 from datasources.snapshot import CACHE_DIR, snapshot
 
-TEMPLATE = os.path.join(ROOT, "dashboard_template.html")
-OUTPUT = os.path.join(ROOT, "dashboard.html")
+DATA_DIR = os.path.join(ROOT, "data", "derived")
+OUTPUT = os.path.join(DATA_DIR, "dashboard.json")
 OPERATIONS_CSV = data_path("operations.csv")
 
 
@@ -458,11 +460,11 @@ def build(fresh=False):
         "stocks": stocks, "cands": load_cands(core, watch, klines), "pulse": pulse, "watch": watch, "logs": logs, "alerts": alerts, "operations": load_operations(),
         "core": core,
     }
-    payload = json.dumps(data, ensure_ascii=False, default=str).replace("</", "<\\/")
-    html = _read(TEMPLATE).replace("/*__DASHBOARD_DATA__*/null", payload)
+    # 只写数据 JSON，不再注入 HTML。前端 web/dashboard.html 通过 HTTP fetch 本文件。
+    os.makedirs(DATA_DIR, exist_ok=True)
     tmp = OUTPUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
-        f.write(html)
+        json.dump(data, f, ensure_ascii=False, default=str)
     os.replace(tmp, OUTPUT)
     return OUTPUT, data
 

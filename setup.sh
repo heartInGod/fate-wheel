@@ -133,10 +133,22 @@ cat >> "$BIN_DIR/fate" <<'EOF'
 usage() {
   cat <<USAGE
 用法：
-  fate wheel            用本地缓存重新生成看板并打开（不联网，约 1~3 秒；页面打开后自动拉实时行情）
+  fate wheel            用本地缓存重新生成看板数据并启动服务打开（约 1~3 秒；页面打开后自动拉实时行情）
   fate wheel -f         先联网重抓盘中快照 + 日 K / 技术位（限速下约 3~5 分钟）再生成并打开
-  fate wheel -o         不重新生成，直接打开现有 dashboard.html
+  fate wheel -o         不重新生成，直接启动服务打开现有看板
+  fate serve            只启动本地 HTTP 服务（不生成、不打开浏览器）
 USAGE
+}
+
+PORT=8765
+serve() {
+  cd "$PROJECT" || exit 1
+  if command -v python3 >/dev/null 2>&1; then
+    echo "看板地址： http://localhost:$PORT/web/dashboard.html"
+    exec python3 -m http.server "$PORT" --bind 127.0.0.1
+  else
+    echo "找不到 python3，无法启动 HTTP 服务" >&2; exit 1
+  fi
 }
 
 case "$1" in
@@ -144,12 +156,16 @@ case "$1" in
     cd "$PROJECT" || exit 1
     case "$2" in
       -o|--open) ;;
-      -f|--fresh) python3 main.py dashboard fresh=true || echo "生成失败，打开旧看板" ;;
-      "") python3 main.py dashboard || echo "生成失败，打开旧看板" ;;
+      -f|--fresh) python3 main.py dashboard fresh=true || echo "数据生成失败，尝试打开旧看板" ;;
+      "") python3 main.py dashboard || echo "数据生成失败，尝试打开旧看板" ;;
       *) usage; exit 1 ;;
     esac
-    open "$PROJECT/dashboard.html"
+    if command -v open >/dev/null 2>&1; then
+      ( sleep 1; open "http://localhost:$PORT/web/dashboard.html" ) &
+    fi
+    serve
     ;;
+  serve) serve ;;
   *) usage; exit 1 ;;
 esac
 EOF
@@ -181,7 +197,7 @@ if [ $CHECK = 1 ]; then
   else
     fail "snapshot 失败，检查网络"
   fi
-  python3 main.py dashboard >/dev/null 2>&1 && ok "dashboard.html 已生成" || fail "build_dashboard.py 失败"
+  python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json 已生成（用 fate wheel 启动服务查看）" || fail "dashboard 数据生成失败"
 fi
 if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
   OID=$(python3 -c "import json;print(json.load(open('setup/crons.json'))['feishu_open_id'])")
