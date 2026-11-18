@@ -4,7 +4,7 @@
 
 ## 数据从哪来
 
-页面打开后通过 HTTP 请求 `../data/derived/dashboard.json` 加载数据。这份 JSON 由 Python 侧聚合生成：
+页面打开后优先用 `<script src>` 加载 `../data/derived/dashboard.js`（该文件把数据赋给 `window.FW_DASHBOARD_DATA`）；若 JS 不存在，再通过 HTTP fetch `../data/derived/dashboard.json` 回退。两份数据都由 Python 侧聚合生成：
 
 ```bash
 python3 main.py dashboard            # 用现有缓存聚合（约 1~3 秒）
@@ -13,11 +13,13 @@ python3 main.py dashboard fresh=true # 先联网重抓快照再聚合
 
 生成逻辑在 `agent/build_dashboard.py`——估值分区、政策分、长线建议表、归属判断、日志解析等计算**全部在 Python 侧完成**（`core_value.py` / `signals_engine.py` 等），前端只负责渲染。因此改计算逻辑只需改 Python，不用动前端。
 
-`dashboard.json` 含账户/持仓等隐私数据，已加入 `.gitignore`，不入库；随时可用上面的命令再生。
+`dashboard.json` / `dashboard.js` 含账户/持仓等隐私数据，已加入 `.gitignore`，不入库；随时可用上面的命令再生。两份内容相同，JS 只是把 JSON 包装成全局变量，方便 `file://` 下加载。
 
 ## 怎么打开
 
-浏览器用 `file://` 双击打开时，出于安全限制无法 fetch 本地 JSON，**必须通过本地 HTTP 服务**访问：
+**直接双击 `web/dashboard.html` 即可**（`file://` 协议）。数据由 `<script src>` 加载，不受 `fetch` 在 `file://` 下的 CORS 限制，因此无需后台服务；行情是外链 JSONP（同为 script 标签），联网时会每 30 秒自动刷新。
+
+如果只生成了 JSON、没有 JS（例如旧版本数据），则需要本地 HTTP 服务，`fetch` 回退才会生效：
 
 ```bash
 # 方式一：安装过 fate 命令（setup.sh 会自动装）
@@ -30,7 +32,7 @@ python3 -m http.server 8765 --bind 127.0.0.1
 # 浏览器打开 http://localhost:8765/web/dashboard.html
 ```
 
-> 服务必须从**项目根目录**启动，这样 `../data/derived/dashboard.json` 的相对路径才能正确解析。
+> 服务必须从**项目根目录**启动，这样 `../data/derived/dashboard.json` 的相对路径才能正确解析。正常情况下用双击打开即可，不需要服务。
 
 ## 页面功能
 

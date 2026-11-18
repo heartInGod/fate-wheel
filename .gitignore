@@ -23,6 +23,7 @@ backups/
 
 # ---- 由脚本生成的看板数据（含持仓隐私，跑 main.py dashboard 可再生）----
 data/derived/dashboard.json
+data/derived/dashboard.js
 
 # ---- 抓取后自动刷新的档案（脚本维护，非源码）----
 profiles/

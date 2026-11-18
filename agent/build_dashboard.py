@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""生成看板数据 dashboard.json（供 web/dashboard.html 通过 HTTP fetch 加载）。
+"""生成看板数据 dashboard.json + dashboard.js（供 web/dashboard.html 加载）。
 
-  python3 main.py dashboard            # 用 cache/snapshot_latest.json 聚合，写 data/derived/dashboard.json
+  python3 main.py dashboard            # 用 cache/snapshot_latest.json 聚合，写 data/derived/dashboard.json 与 dashboard.js
   python3 main.py dashboard fresh=true # 强制重新拉一次盘中 snapshot 后再聚合
 
-输出：data/derived/dashboard.json（含全部前端展示所需的结构化数据）。
-前端入口是 web/dashboard.html，需通过本地 HTTP 服务访问（见 web/README.md 或 setup.sh 的 serve 命令）；
-浏览器中打开后，页面 fetch ../data/derived/dashboard.json 渲染，并实时拉取行情。
+输出：
+- data/derived/dashboard.json：结构化数据本体（机器可读，便于复查/其他脚本消费）。
+- data/derived/dashboard.js：同一份数据包装成 `window.FW_DASHBOARD_DATA = {...}`，
+  由前端用 <script src> 加载。这样双击 web/dashboard.html（file://）也能取到数据，
+  因为 <script src> 不受 fetch/XHR 在 file:// 下的 CORS 限制，无需启动本地 HTTP 服务。
+前端入口是 web/dashboard.html：优先读 dashboard.js；通过 HTTP 访问时若 JS 缺失则回退 fetch dashboard.json。
+页面中行情为外链 JSONP（同样是 script 标签），file:// 下也能实时拉取。
 profiles/、announcements/、logs/、thesis.json（定位前提）、cache/commodity.json（关联商品价格，盘前快照写入），日 K / 技术位 / 汇率读 cache/ 本地缓存（不联网；fresh=true 时才联网刷新），页面打开后再实时拉取；「长线 & 政策」页读 core_auto.json
 （core_value.py review 生成：分仓、目标价、行业景气 = 基础分 + 衰减政策分、个股建议总表）和最新一期
 research/policy/*_政策信号报告.md。
@@ -31,6 +35,7 @@ from datasources.snapshot import CACHE_DIR, snapshot
 
 DATA_DIR = os.path.join(ROOT, "data", "derived")
 OUTPUT = os.path.join(DATA_DIR, "dashboard.json")
+OUTPUT_JS = os.path.join(DATA_DIR, "dashboard.js")
 OPERATIONS_CSV = data_path("operations.csv")
 
 
@@ -460,12 +465,22 @@ def build(fresh=False):
         "stocks": stocks, "cands": load_cands(core, watch, klines), "pulse": pulse, "watch": watch, "logs": logs, "alerts": alerts, "operations": load_operations(),
         "core": core,
     }
-    # 只写数据 JSON，不再注入 HTML。前端 web/dashboard.html 通过 HTTP fetch 本文件。
+    # 同时写 JSON（机器可读）与 JS（前端 <script src> 直接加载，file:// 下无需 HTTP 服务）。
     os.makedirs(DATA_DIR, exist_ok=True)
     tmp = OUTPUT + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, default=str)
     os.replace(tmp, OUTPUT)
+    # JS 包装：把 JSON 字面量赋给全局变量。< 转义为 \u003c，避免日志/资料正文里出现
+    # </script> 之类文本破坏脚本（即使当前是外链文件也保一手）；U+2028/2029 同样转义。
+    payload = json.dumps(data, ensure_ascii=False, default=str)
+    payload = (payload.replace("<", "\\u003c")
+                      .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
+    tmp_js = OUTPUT_JS + ".tmp"
+    with open(tmp_js, "w", encoding="utf-8") as f:
+        f.write("/* 由 main.py dashboard 生成，勿手工编辑；含持仓隐私，已 gitignore。 */\n")
+        f.write("window.FW_DASHBOARD_DATA = " + payload + ";\n")
+    os.replace(tmp_js, OUTPUT_JS)
     return OUTPUT, data
 
 

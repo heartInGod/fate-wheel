@@ -93,7 +93,7 @@ cd fate-wheel
 ./setup.sh                                          # 一次性配置
 python3 main.py fetch snapshot mode=intraday        # 手动验证数据
 python3 main.py signals --no-record               # 预览候选信号
-fate wheel                                          # 生成并打开看板
+fate wheel                                          # 生成数据并打开看板（也可直接双击 web/dashboard.html）
 ```
 
 > ⚠️ 所有提醒仅供个人研究参考，不构成投资建议；系统不自动下单。

@@ -88,7 +88,7 @@
 
 ## 持仓看板
 
-- 生成：`python3 main.py dashboard`（默认读 `cache/snapshot_latest.json`；加 `fresh=true` 先重跑一次盘中 snapshot）。输出数据文件 `data/derived/dashboard.json`（含持仓隐私、已 gitignore），前端 `web/dashboard.html` 通过本地 HTTP 服务 fetch 它渲染。
+- 生成：`python3 main.py dashboard`（默认读 `cache/snapshot_latest.json`；加 `fresh=true` 先重跑一次盘中 snapshot）。输出数据文件 `data/derived/dashboard.json` 及同内容的 `data/derived/dashboard.js`（均含持仓隐私、已 gitignore）。前端 `web/dashboard.html` 优先用 `<script src>` 加载 JS，双击 `file://` 即可打开、无需后台服务；仅当 JS 缺失且通过 HTTP 访问时回退 fetch JSON。
 - 定时任务写完日志后会自动刷新看板。
 - 页面：持仓总览 / 个股详情（日K、技术位、资金流、公告、资料）/ 分析日志 / 操作日志。浏览器联网时每 30 秒从腾讯行情刷新实时价。
 - 实际成交记录在 `operations.csv`（UTF-8 BOM），表头 `日期,时间,操作,名称,代码,数量,价格,备注`，例如 `2026-10-30,10:05,卖出,旭光电子,600353,1000,12.30,止损`。用 `python3 main.py record-op 买入 600353 500 19.80 --note 理由` 追加。

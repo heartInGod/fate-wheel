@@ -159,11 +159,20 @@ tr.held td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
   <div class="foot" id="foot"></div>
 </main>
 
+<!-- 看板数据：优先由 dashboard.js 注入 window.FW_DASHBOARD_DATA（<script src> 在 file:// 下也能加载，
+     无需后台服务）；若该文件不存在（例如通过 HTTP 打开且只生成了 JSON），下方 loadDashboardData 会回退 fetch。 -->
+<script src="../data/derived/dashboard.js"></script>
 <script>
-/* 看板数据由 Python 侧 main.py dashboard 聚合并写入 data/derived/dashboard.json。
-   本页通过 HTTP fetch 加载（需从项目根启动本地服务，见 web/README.md）。 */
+/* 数据由 Python 侧 main.py dashboard 聚合生成：
+   - data/derived/dashboard.js  → <script src> 注入 window.FW_DASHBOARD_DATA（双击本页即可加载）
+   - data/derived/dashboard.json → 通过 HTTP 访问时的 fetch 回退
+   本页不内嵌任何数据。 */
 let D = null;
 async function loadDashboardData(){
+  if(window.FW_DASHBOARD_DATA){
+    D = window.FW_DASHBOARD_DATA;
+    return true;
+  }
   try{
     const r = await fetch('../data/derived/dashboard.json', {cache:'no-store'});
     if(!r.ok) throw new Error('HTTP '+r.status);
@@ -171,8 +180,8 @@ async function loadDashboardData(){
     return true;
   }catch(e){
     document.getElementById('view').innerHTML =
-      '<div class="card empty"><b>数据加载失败</b>无法读取 data/derived/dashboard.json：'+String(e&&e.message||e)+
-      '<br>请先运行 <code>python3 main.py dashboard</code> 生成数据，并通过本地 HTTP 服务打开本页（不能直接双击文件）。</div>';
+      '<div class="card empty"><b>数据加载失败</b>无法读取看板数据：'+String(e&&e.message||e)+
+      '<br>请先运行 <code>python3 main.py dashboard</code> 生成 data/derived/dashboard.js（或 dashboard.json）。</div>';
     return false;
   }
 }

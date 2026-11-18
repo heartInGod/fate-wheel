@@ -133,14 +133,25 @@ cat >> "$BIN_DIR/fate" <<'EOF'
 usage() {
   cat <<USAGE
 用法：
-  fate wheel            用本地缓存重新生成看板数据并启动服务打开（约 1~3 秒；页面打开后自动拉实时行情）
+  fate wheel            用本地缓存重新生成看板数据并直接打开看板（约 1~3 秒；双击 file:// 即可，无需服务）
   fate wheel -f         先联网重抓盘中快照 + 日 K / 技术位（限速下约 3~5 分钟）再生成并打开
-  fate wheel -o         不重新生成，直接启动服务打开现有看板
-  fate serve            只启动本地 HTTP 服务（不生成、不打开浏览器）
+  fate wheel -o         不重新生成，直接打开现有看板
+  fate serve            可选：启动本地 HTTP 服务（仅在只有 JSON、没有 JS 的历史数据下才需要）
 USAGE
 }
 
 PORT=8765
+open_board() {
+  if command -v open >/dev/null 2>&1; then
+    open "$PROJECT/web/dashboard.html"
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$PROJECT/web/dashboard.html"
+  elif command -v wslview >/dev/null 2>&1; then
+    wslview "$PROJECT/web/dashboard.html"
+  else
+    echo "找不到打开浏览器的命令（open / xdg-open / wslview），请手动打开： $PROJECT/web/dashboard.html" >&2
+  fi
+}
 serve() {
   cd "$PROJECT" || exit 1
   if command -v python3 >/dev/null 2>&1; then
@@ -160,10 +171,7 @@ case "$1" in
       "") python3 main.py dashboard || echo "数据生成失败，尝试打开旧看板" ;;
       *) usage; exit 1 ;;
     esac
-    if command -v open >/dev/null 2>&1; then
-      ( sleep 1; open "http://localhost:$PORT/web/dashboard.html" ) &
-    fi
-    serve
+    open_board
     ;;
   serve) serve ;;
   *) usage; exit 1 ;;
@@ -197,7 +205,7 @@ if [ $CHECK = 1 ]; then
   else
     fail "snapshot 失败，检查网络"
   fi
-  python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json 已生成（用 fate wheel 启动服务查看）" || fail "dashboard 数据生成失败"
+  python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json / dashboard.js 已生成（可直接打开 web/dashboard.html 查看）" || fail "dashboard 数据生成失败"
 fi
 if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
   OID=$(python3 -c "import json;print(json.load(open('setup/crons.json'))['feishu_open_id'])")
