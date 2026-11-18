@@ -1,7 +1,7 @@
 """本地档案：把变化慢的资料和随时新增的公告落到 Markdown 文件，按代码一只一个文件。
 
   profiles/{代码}.md       公司/基金资料，每天最多刷新一次（当天已更新则跳过，force=True 强制）
-  announcements/{代码}.md  公告档案，增量合并、按链接去重、只增不删，记录每条的「收录时间」
+  data/announcements/{代码}.md  公告档案，增量合并、按链接去重、只增不删，记录每条的「收录时间」（归档到 data/ 下）
 
 港股文件名沿用 holdings.csv 写法，如 0100.HK.md。
 """
@@ -15,9 +15,10 @@ from . import profile as prof
 from ._http import DataSourceError, normalize
 from .holdings import ROOT, holdings
 from .watchlist import watchlist
+from datamul import data_dir
 
 PROFILE_DIR = os.path.join(ROOT, "profiles")
-ANN_DIR = os.path.join(ROOT, "announcements")
+ANN_DIR = data_dir("announcements")
 _ROW = re.compile(r"^\| (?P<date>[^|]*) \| (?P<title>[^|]*) \| (?P<cat>[^|]*) \| (?P<src>[^|]*) \| "
                   r"(?P<seen>[^|]*) \| \[原文\]\((?P<url>[^)]*)\) \|$")
 
@@ -163,7 +164,7 @@ def _render_ann(name, key, rows):
 
 
 def sync_announcements(codes=None, days=3, n=30):
-    """拉取近 days 天公告并合并进 announcements/{代码}.md（首次建档自动回溯 90 天）。
+    """拉取近 days 天公告并合并进 data/announcements/{代码}.md（首次建档自动回溯 90 天）。
     返回每只的新增条目（new）和今日公告（today），供盘前/盘中分析直接使用。"""
     names = _names()
     codes = codes or [h["code"] for h in holdings()]

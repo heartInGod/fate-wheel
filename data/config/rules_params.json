@@ -155,7 +155,7 @@
                "weights": {"rev_cagr3": 0.15, "np_cagr3": 0.25, "ytd_np_yoy": 0.2, "ret_1y": 0.2, "flow20": 0.2},
                "hot": {"pe_max": 80, "pe_fair_max": 60},
                "cold": {"buy_upside_pct": 40},
-               "policy": {"_说明": "政策加分（policy_signal.py）。事件库 file（policy_signals.json，人工/大模型按 research/policy/PROMPT.md 录入国家级政策事件）里每个事件给行业打 s∈[−3,+3]；权重 w = 0.5^(距今天数/半衰期)，半衰期按事件类型 half_life_days（讲话最快、资金落地最慢），w < min_weight 视为失效，未来日期不计。行业政策分 = max_points × clip(Σ s·w / full_raw, −1, 1)，叠加到基础景气分上（0~100 截断），排名按最终分；分档仍要求盈利门槛（np_cagr3 > 0 且 ytd_np_yoy ≥ 0），政策不能把净利下滑的行业抬成高景气，但能让中性↔低景气跨档（会随衰减回落）。stocks 段只用于东财分类与主业不一致的公司，单只上限 stock_max_points。etf_industry：ETF → 行业，只用于报告展示政策分，不影响 ETF 估值。enabled=false 时政策分全为 0",
+               "policy": {"_说明": "政策加分（policy_signal.py）。事件库 file（policy_signals.json，人工/大模型按 data/research/policy/PROMPT.md 录入国家级政策事件）里每个事件给行业打 s∈[−3,+3]；权重 w = 0.5^(距今天数/半衰期)，半衰期按事件类型 half_life_days（讲话最快、资金落地最慢），w < min_weight 视为失效，未来日期不计。行业政策分 = max_points × clip(Σ s·w / full_raw, −1, 1)，叠加到基础景气分上（0~100 截断），排名按最终分；分档仍要求盈利门槛（np_cagr3 > 0 且 ytd_np_yoy ≥ 0），政策不能把净利下滑的行业抬成高景气，但能让中性↔低景气跨档（会随衰减回落）。stocks 段只用于东财分类与主业不一致的公司，单只上限 stock_max_points。etf_industry：ETF → 行业，只用于报告展示政策分，不影响 ETF 估值。enabled=false 时政策分全为 0",
                           "enabled": true, "file": "policy_signals.json", "max_points": 10, "stock_max_points": 6, "full_raw": 3, "min_weight": 0.05,
                           "half_life_days": {"speech": 5, "presser": 7, "regulation": 15, "document": 20, "funding": 30},
                           "etf_industry": {"159813": "半导体", "159327": "半导体", "562500": "自动化设备"}}}

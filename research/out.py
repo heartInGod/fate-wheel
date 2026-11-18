@@ -1,6 +1,9 @@
-import json,csv
+import json,csv,os,sys
+ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "common"))
+from datamul import data_dir
 s=json.load(open('screen.json')); P=s['pick']
-D='/Users/fox/modelProject/fate_wheel/research/'
+D=data_dir("research") + os.sep
 L=["# 社保基金持仓优选 30 只（2026 三季报）","",
 "数据：东方财富主力持仓（社保，报告期 2026-09-30，共 598 只）、2024/2025 年报业绩、实时估值（取数 2026-11-02 晚）。已剔除 ST 和现有持仓（中钨高新、斯瑞新材）。","",
 "## 筛选口径","",

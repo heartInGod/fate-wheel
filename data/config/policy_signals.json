@@ -1,5 +1,5 @@
 {
- "_说明": "政策事件库（policy_signal.py 读取）。按 research/policy/PROMPT.md 的 Part A 规则录入，由人或 Agent 维护，不由脚本生成。s：+3 核心任务且有量化目标/资金，+2 重点任务，+1 提及/直接上下游，负值表示收紧。衰减按 type 的半衰期计算（rules_params.json 的 sleeves.core.industry.policy）。录入后运行 python3 main.py policy check",
+ "_说明": "政策事件库（policy_signal.py 读取）。按 data/research/policy/PROMPT.md 的 Part A 规则录入，由人或 Agent 维护，不由脚本生成。s：+3 核心任务且有量化目标/资金，+2 重点任务，+1 提及/直接上下游，负值表示收紧。衰减按 type 的半衰期计算（rules_params.json 的 sleeves.core.industry.policy）。录入后运行 python3 main.py policy check",
  "events": [
   {
    "id": "20261103_ndrc_新动能",
@@ -7,7 +7,7 @@
    "type": "presser",
    "title": "发改委奋进“十五五”系列发布会①：培育壮大新动能",
    "url": "https://www.ndrc.gov.cn/xwdt/wszb/swwfbhpyzdxdn/",
-   "local": "research/policy/20261103_新动能.txt",
+   "local": "data/research/policy/20261103_新动能.txt",
    "industries": {
     "半导体": {"s": 3, "why": "六大支柱之首；前三季度集成电路产量+23.3%；超常规攻关、首台套"},
     "电子化学品Ⅱ": {"s": 2, "why": "集成电路关键材料；首批次应用政策"},
@@ -39,7 +39,7 @@
    "type": "presser",
    "title": "发改委奋进“十五五”系列发布会②：夯实发展支撑（现代化基础设施）",
    "url": "https://www.ndrc.gov.cn/xwdt/wszb/swwxwfbhhsfzzcygqk/",
-   "local": "research/policy/20261104_发展支撑.txt",
+   "local": "data/research/policy/20261104_发展支撑.txt",
    "industries": {
     "轨交设备Ⅱ": {"s": 2, "why": "新建高铁约1万公里；时速400公里稳步商业化、CR450"},
     "航运港口": {"s": 2, "why": "100余个万吨级自动化码头泊位、世界一流港口、大宗物资专业化码头"},

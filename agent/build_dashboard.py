@@ -11,9 +11,9 @@
   因为 <script src> 不受 fetch/XHR 在 file:// 下的 CORS 限制，无需启动本地 HTTP 服务。
 前端入口是根目录 dashboard.html（前端资源在 web/）：优先读 dashboard.js；通过 HTTP 访问时若 JS 缺失则回退 fetch dashboard.json。
 页面中行情为外链 JSONP（同样是 script 标签），file:// 下也能实时拉取。
-profiles/、announcements/、logs/、thesis.json（定位前提）、cache/commodity.json（关联商品价格，盘前快照写入），日 K / 技术位 / 汇率读 cache/ 本地缓存（不联网；fresh=true 时才联网刷新），页面打开后再实时拉取；「长线 & 政策」页读 core_auto.json
+profiles/、data/announcements/、logs/、data/portfolio/thesis.json（定位前提）、cache/commodity.json（关联商品价格，盘前快照写入），日 K / 技术位 / 汇率读 cache/ 本地缓存（不联网；fresh=true 时才联网刷新），页面打开后再实时拉取；「长线 & 政策」页读 data/derived/core_auto.json
 （core_value.py review 生成：分仓、目标价、行业景气 = 基础分 + 衰减政策分、个股建议总表）和最新一期
-research/policy/*_政策信号报告.md。
+data/research/policy/*_政策信号报告.md。
 """
 import csv
 import datetime
@@ -30,7 +30,7 @@ from datasources import thesis as th
 from datasources import watchlist as wl
 from datasources._http import normalize
 from datasources.holdings import ROOT, account, holdings
-from datamul import data_path
+from datamul import data_path, data_dir
 from datasources.snapshot import CACHE_DIR, snapshot
 
 DATA_DIR = os.path.join(ROOT, "data", "derived")
@@ -404,7 +404,7 @@ def load_core():
     involved = set((core.get("industry") or {}).get("involved") or [])
     inds = [dict(v, name=k) for k, v in (pol.get("industries") or {}).items() if v.get("policy_pts") or k in involved]
     inds.sort(key=lambda x: -(x.get("policy_pts") or 0))
-    reports = sorted(glob.glob(os.path.join(ROOT, "research", "policy", "*_政策信号报告.md")))
+    reports = sorted(glob.glob(data_dir("research", "policy", "*_政策信号报告.md")))
     rep = {"name": os.path.relpath(reports[-1], ROOT), "md": _read(reports[-1])} if reports else None
     return {"asof": core.get("asof"), "generated_at": core.get("generated_at"), "summary": core.get("summary") or {},
             "advice": rows, "sleeve": sleeve, "detail": detail, "errors": (core.get("errors") or [])[:10],

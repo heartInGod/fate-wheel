@@ -27,7 +27,7 @@ data/derived/dashboard.js
 
 # ---- 抓取后自动刷新的档案（脚本维护，非源码）----
 profiles/
-announcements/
+data/announcements/
 
 # ---- macOS / IDE ----
 .DS_Store

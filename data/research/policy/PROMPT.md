@@ -53,7 +53,7 @@
 
 ```json
 {"id": "YYYYMMDD_来源_主题", "date": "YYYY-MM-DD", "type": "presser",
- "title": "…", "url": "官方链接", "local": "research/policy/xxx.txt（如有原文存档）",
+ "title": "…", "url": "官方链接", "local": "data/research/policy/xxx.txt（如有原文存档）",
  "industries": {"半导体": {"s": 3, "why": "…"}},
  "stocks": {"605117": {"s": 1, "why": "…"}}}
 ```
@@ -67,9 +67,9 @@
 输入：
 - `python3 main.py core review` 生成的 `logs/core/yyyyMMdd.md`，其中“政策信号”和“个股建议总表”两节由代码生成；
 - `python3 main.py policy` 的输出；
-- 政策原文存档 `research/policy/*.txt`。
+- 政策原文存档 `data/research/policy/*.txt`。
 
-输出：`research/policy/yyyyMMdd_政策信号报告.md`，按以下结构写：
+输出：`data/research/policy/yyyyMMdd_政策信号报告.md`，按以下结构写：
 
 1. **结论先行**（3–5 行）：本期政策的主基调（加速/收敛/监管），对持仓整体的影响，以及**是否需要操作**。
 2. **有效政策事件表**：日期、类型、标题、当前衰减权重、预计失效日（权重低于 0.05 的那天）、来源链接。

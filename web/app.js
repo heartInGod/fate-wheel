@@ -273,7 +273,7 @@ function overview(){
   const annHtml=recent.slice(0,12).map(({s,a})=>`<li><span class="d">${esc((a.date||'').slice(5,16))}</span><span><b style="font-weight:600">${esc(s.name)}</b> · <a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>${(a.seen||'').slice(0,10)===today&&a.date.slice(0,10)>=today?' <span class="tag new">今日</span>':''}</span></li>`).join('');
   const sector=(arr,title)=>arr&&arr.length?`<div><div class="small muted" style="margin:4px 0">${title}</div><ul class="list">${arr.slice(0,5).map(x=>`<li><span style="flex:1">${esc(x.name)}</span><span class="num small ${cls(x.pct)}">${pct(x.pct)}</span><span class="num small ${cls(x.main_net)}" style="width:80px;text-align:right">${money(x.main_net)}</span></li>`).join('')}</ul></div>`:'';
   h+=`<div class="grid two section">
-    <div class="card"><h3>近期公告 <span class="hint">来自 announcements/ 档案，按公告日期倒序</span></h3>${annHtml?`<ul class="list">${annHtml}</ul>`:'<div class="empty">暂无公告</div>'}</div>
+    <div class="card"><h3>近期公告 <span class="hint">来自 data/announcements/ 档案，按公告日期倒序</span></h3>${annHtml?`<ul class="list">${annHtml}</ul>`:'<div class="empty">暂无公告</div>'}</div>
     <div class="grid" style="align-content:start">
       ${pulseCard()}
       <div class="card alloc"><h3>仓位分布 <span class="hint">占总资产</span></h3>${allocHtml}</div>
@@ -459,7 +459,7 @@ function watchView(){
   const src=[...new Set(W.map(w=>w.source).filter(Boolean))].join('、');
   $('#view').innerHTML=`<div class="card section" style="padding:0"><div style="padding:16px 18px 4px"><h3>自选股 <span class="hint">${W.length} 只 · ${esc(src)} · 只找买点（👀自选低吸 / 👀自选突破），技术位为前一交易日及以前</span></h3></div>${tbl}</div>
     <div class="grid two section"><div class="card"><h3>自选股信号 <span class="hint">近 10 天 · logs/signals/</span></h3><div style="max-height:520px;overflow:auto">${sigHtml}</div></div>
-    <div class="card"><h3>自选股公告 <span class="hint">近 30 天 · announcements/</span></h3><div style="max-height:520px;overflow:auto">${annHtml}</div></div></div>`;
+    <div class="card"><h3>自选股公告 <span class="hint">近 30 天 · data/announcements/</span></h3><div style="max-height:520px;overflow:auto">${annHtml}</div></div></div>`;
   document.querySelectorAll('th[data-wsort]').forEach(el=>el.onclick=()=>{const k=el.dataset.wsort;if(SW.k===k)SW.asc=!SW.asc;else{SW.k=k;SW.asc=k==='name'}render(true)});
   document.querySelectorAll('tr[data-code]').forEach(el=>el.onclick=()=>{location.hash='#stock/'+el.dataset.code});
 }
@@ -564,7 +564,7 @@ function coreView(){
   h+=`<div class="grid two section"><div class="card"><h3>行业景气 = 基础分 + 政策分 <span class="hint">${esc(C.industry_span||'')} · 政策分 ±${maxp} 封顶 · 进高景气仍需净利增长</span></h3><div style="max-height:620px;overflow:auto">${ind}</div>
       ${stk?`<ul class="list" style="margin-top:8px">${stk}</ul>`:''}</div>
     <div class="card"><h3>有效政策事件 <span class="hint">权重 = 0.5^(天数/半衰期)，&lt; ${esc(pp.min_weight??0.05)} 失效</span></h3>${ev}
-      <div class="small muted" style="margin-top:10px">半衰期：${Object.entries(hl).map(([k,v])=>`${esc(PTYPE[k]||k)} ${esc(v)} 天`).join(' · ')}。事件库 policy_signals.json，录入规则 research/policy/PROMPT.md。</div></div></div>`;
+      <div class="small muted" style="margin-top:10px">半衰期：${Object.entries(hl).map(([k,v])=>`${esc(PTYPE[k]||k)} ${esc(v)} 天`).join(' · ')}。事件库 policy_signals.json，录入规则 data/research/policy/PROMPT.md。</div></div></div>`;
   if(C.report)h+=`<div class="card section"><h3>最新政策信号报告 <span class="hint">${esc(C.report.name)}</span></h3><details class="fold" open><summary>展开 / 收起</summary><div class="md">${md(C.report.md)}</div></details></div>`;
   if((C.errors||[]).length)h+=`<div class="errs">复查数据缺失：${esc(C.errors.join('；'))}</div>`;
   $('#view').innerHTML=h;

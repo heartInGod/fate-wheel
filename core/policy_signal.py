@@ -5,7 +5,7 @@
 进入景气分的财务项，要么被市场遗忘。所以政策分只做「加分项」，按天快速衰减；分档的盈利门槛（hot 要求净利增长）
 不变——政策热、业绩冷的行业最多从 cold 拉回 neutral，不会直接变成 hot。
 
-数据：policy_signals.json（项目根目录，人/Agent 按 research/policy/PROMPT.md 的规则录入；不由脚本生成）
+数据：policy_signals.json（项目根目录，人/Agent 按 data/research/policy/PROMPT.md 的规则录入；不由脚本生成）
   events[]: {id, date: YYYY-MM-DD, type: speech|presser|document|funding|regulation, title, url, local?,
              industries: {东财二级行业名: {s: -3..+3, why}}, stocks?: {代码: {s, why}}}
   s 的口径：+3 点名为核心任务且有量化目标/资金；+2 点名为重点任务；+1 提及/间接受益；

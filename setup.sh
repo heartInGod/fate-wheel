@@ -67,8 +67,8 @@ fi
 
 # ---------------------------------------------------------------- 2. 目录与数据文件
 step "2. 目录与数据文件"
-for d in logs cache profiles announcements; do mkdir -p "$d"; done
-ok "logs/ cache/ profiles/ announcements/"
+for d in logs cache profiles data/announcements data/research; do mkdir -p "$d"; done
+ok "logs/ cache/ profiles/ data/announcements/ data/research/"
 
 BOM=$'\xEF\xBB\xBF'
 make_csv() {  # 文件不存在时写入带 BOM 的表头

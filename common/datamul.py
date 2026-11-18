@@ -7,12 +7,14 @@
   data/config/      人维护的规则与策略配置
       rules_params.json, risk_policy.json, policy_signals.json, core_sleeves.json
   data/derived/     脚本自动生成的校准 / 复查产物（可再生成）
-      rules_auto.json, core_auto.json
+      rules_auto.json, core_auto.json, dashboard.json, dashboard.js
   data/watchlist/   自选股名单
       watchlist.csv
+  data/announcements/  公告档案（脚本增量维护，gitignore）；一只一个 {代码}.md
+  data/research/    研究数据：社保选股结果（优选/补充）、policy/ 政策报告与原文存档
 
-所有代码通过 data_path(name) 访问这些文件，读写共用同一解析，因此归档后
-业务逻辑无需改动。未在 ARCHIVE 登记的名字（cache/、logs/、profile 等）保持
+所有代码通过 data_path(文件名) / data_dir(目录名, ...) 访问这些文件，读写共用同一解析，
+因此归档后业务逻辑无需改动。未在 ARCHIVE 登记的名字（cache/、logs/、profiles 等）保持
 原有语义：data_path("cache", "x") 等价于 os.path.join(ROOT, "cache", "x")。
 
 注意：本模块只负责路径解析，不搬动文件。实际迁移由一次性 git mv 完成，
@@ -65,6 +67,39 @@ def data_path(name, *parts):
     return os.path.join(ROOT, name, *parts)
 
 
+# 目录级归档：整个目录（含其下的通配文件）从 ROOT 挪到 data/ 下。
+# 与 ARCHIVE 的区别：这里是目录名 -> data 下子目录，调用方传目录名 + 相对片段。
+DIR_ARCHIVE = {
+    "announcements": "announcements",
+    "research": "research",
+}
+
+# 目录级归档中「实际搬走的子项」：用于 check 校验目标存在、根目录无残留。
+# announcements 整目录搬走（根目录下该目录应消失）；research 只搬数据，*.py 脚本留在研究目录（代码），
+# 因此逐个校验搬走的子项，而不是要求整个 research/ 消失。
+DIR_MOVED = {
+    "announcements": ["."],
+    "research": [
+        "policy",
+        "社保优选30_2026Q3.csv", "社保优选30_2026Q3.md",
+        "社保补充_2026Q3.csv", "社保补充_2026Q3.json", "社保补充_2026Q3.md",
+    ],
+}
+
+
+def data_dir(name, *parts):
+    """返回归档目录（或其下文件）的路径。
+
+    已登记的目录名路由到 data/<子目录>/<parts...>；未登记的按原名相对 ROOT 解析。
+    例如 data_dir("announcements", "002558.md") -> ROOT/data/announcements/002558.md；
+         data_dir("research", "policy", "PROMPT.md") -> ROOT/data/research/policy/PROMPT.md。
+    """
+    sub = DIR_ARCHIVE.get(name)
+    if sub:
+        return os.path.join(ROOT, "data", sub, *parts)
+    return os.path.join(ROOT, name, *parts)
+
+
 def archive_root():
     return os.path.join(ROOT, "data")
 
@@ -77,6 +112,9 @@ def _cmd_list():
         print(f"data/{sub}/")
         for name in sorted(by.get(sub, [])):
             print(f"    {name:<24} -> {data_path(name)}")
+    print("目录级归档：")
+    for name, sub in DIR_ARCHIVE.items():
+        print(f"    {name}/ -> data/{sub}/   例如 {data_dir(name, '示例.md')}")
 
 
 def _cmd_check():
@@ -92,7 +130,27 @@ def _cmd_check():
                 print(f"        根目录仍有残留: {stray}")
             if not os.path.exists(target):
                 print(f"        归档目标缺失: {target}")
-    print(f"\n合计 {len(ARCHIVE)} 个登记文件，{problems} 个待处理。")
+    # 目录级归档：逐个校验「搬走的子项」目标存在、源位置无残留。
+    # 例：research/ 下 *.py 脚本是代码，留在原处，不能因为根目录还有 research/ 就判失败。
+    for name, sub in DIR_ARCHIVE.items():
+        moved = DIR_MOVED.get(name, ["."])
+        target_dir = data_dir(name)
+        stray_root = os.path.join(ROOT, name)
+        bad = []
+        for item in moved:
+            t = target_dir if item == "." else os.path.join(target_dir, item)
+            s = stray_root if item == "." else os.path.join(stray_root, item)
+            if not os.path.exists(t):
+                bad.append(f"归档目标缺失: {t}")
+            if os.path.exists(s):
+                bad.append(f"根目录仍有残留: {s}")
+        cnt = len(os.listdir(target_dir)) if os.path.isdir(target_dir) else 0
+        print(f"[{'OK' if not bad else '!!'}] {name + '/':<24} {target_dir}（{cnt} 个文件）")
+        for msg in bad:
+            print(f"        {msg}")
+        problems += len(bad)
+    total = len(ARCHIVE) + len(DIR_ARCHIVE)
+    print(f"\n合计 {total} 项（{len(ARCHIVE)} 文件 + {len(DIR_ARCHIVE)} 目录），{problems} 个待处理。")
     return 1 if problems else 0
 
 

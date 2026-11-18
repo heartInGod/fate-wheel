@@ -1,7 +1,7 @@
 """社保持仓补充候选：从社保基金持仓里挑「长线条件全过 + 估值在买入区」的股票，按 质量/空间/短期动能 打分，补进 watchlist。
 
 口径与 core_value.py review 完全一致（同一套 screen / valuation / 行业景气分档），保证加进去的复查后就是候选区里的买入区股票。
-用法：python3 research/expand.py [需要补充的只数，默认 27]   → 写 research/社保补充_2026Q3.{md,csv,json}，不改 watchlist.csv
+用法：python3 research/expand.py [需要补充的只数，默认 27]   → 写 data/research/社保补充_2026Q3.{md,csv,json}，不改 watchlist.csv
      python3 research/expand.py --apply                      → 把上次结果追加到 watchlist.csv（只追加，不改已有行）
 数据缓存在 /tmp/sb/（社保 5 期持仓），不进仓库。
 """
@@ -17,14 +17,14 @@ from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "common"))
-from datamul import data_path  # noqa: E402
+from datamul import data_path, data_dir  # noqa: E402
 import core_value as cv  # noqa: E402
 import industry_heat as ih  # noqa: E402
 from datasources import capital, quotes  # noqa: E402
 from datasources._http import http_json  # noqa: E402
 
 TMP = "/tmp/sb"
-OUT = os.path.join(ROOT, "research", "社保补充_2026Q3")
+OUT = data_dir("research", "社保补充_2026Q3")
 Q = ["2026-09-30", "2026-06-30", "2026-03-31", "2025-12-31", "2025-09-30"]
 TODAY = datetime.date.today().isoformat()
 IND_CAP = 3   # 同一细分行业（含已有自选）最多几只
