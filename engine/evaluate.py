@@ -538,6 +538,7 @@ def write_summary(params):
         for k, c, w, z, a, ex, t1, t5 in _group_stats(pool, key):
             lines.append(f"| {k} | {c} | {w} | {z} | {_fmt(a)} | {_fmt(ex)} | {_fmt(t1)} | {_fmt(t5)} |")
         lines.append("")
+    os.makedirs(EVAL_DIR, exist_ok=True)
     path = os.path.join(EVAL_DIR, "summary.md")
     with open(path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")

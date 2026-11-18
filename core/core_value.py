@@ -87,7 +87,9 @@ def sleeve_cfg(params):
 
 
 def core_path(params):
-    return os.path.join(ROOT, (sleeve_cfg(params).get("core") or {}).get("file", "core_auto.json"))
+    # 归档后 core_auto.json 位于 data/derived/；data_path 对已登记名字路由到归档目录，
+    # 自定义文件名（sleeves.core.file）则退回 ROOT 下的相对路径，保持原有语义。
+    return data_path((sleeve_cfg(params).get("core") or {}).get("file", "core_auto.json"))
 
 
 def remember_sleeves(core):
