@@ -68,8 +68,8 @@
    发送成功后运行 `python3 main.py record sent <id> [<id> ...]`（列出本次发出的所有信号 id）；发送失败运行 `python3 main.py record send-failed <id> ...`，在日志说明原因（如 lark-cli auth status 显示过期），不要反复重试。
 6. 无论有无信号，都按「日志约定」把本次结论追加到当天日志；无新信号时不发飞书消息。可用 `python3 main.py record list` 核对本时点各信号的状态。
 7. 15:00 那一次运行：在日志里追加收盘小结（各持仓收盘价与涨跌幅、今日提醒回顾——做T逐条写反向腿是否到价、自选股提醒写收盘价相对建仓区间、明日关注点）；若今天发过提醒，再把简短收盘小结发一条飞书。建议的对错由 16:00 的收盘评估任务（`evaluate.py`）统一打分，这里不用自评。
-8. 写完日志（并完成通知）后运行 `python3 main.py dashboard` 刷新看板数据 `data/derived/dashboard.json` 与 `data/derived/dashboard.js`（失败不影响本次任务，日志里注明即可；`web/dashboard.html` 通过 `<script src>` 加载 JS，双击即可查看）。
-9. 只允许追加写 `logs/` 下的日志文件、通过 `signals_engine.py` / `record_signal.py` 写 `logs/signals/`，以及由 `build_dashboard.py` 重新生成 `data/derived/dashboard.json` / `dashboard.js`；`profiles/`、`announcements/` 由 snapshot 脚本自动维护，不要手动编辑；禁止修改 holdings.csv、watchlist.csv、account.csv、operations.csv、rules_params.json、rules_auto.json、experience.md（由 16:00 复盘任务维护）、calibrate.py、auto_params.py、fees.py、fetch_data.py、datasources/、signals_engine.py、signal_store.py、record_signal.py、evaluate.py、build_dashboard.py、`web/dashboard.html` 和本规则文件，禁止执行任何交易。
+8. 写完日志（并完成通知）后运行 `python3 main.py dashboard` 刷新看板数据 `data/derived/dashboard.json` 与 `data/derived/dashboard.js`（失败不影响本次任务，日志里注明即可；根目录 `dashboard.html` 通过 `<script src>` 加载 JS，双击即可查看）。
+9. 只允许追加写 `logs/` 下的日志文件、通过 `signals_engine.py` / `record_signal.py` 写 `logs/signals/`，以及由 `build_dashboard.py` 重新生成 `data/derived/dashboard.json` / `dashboard.js`；`profiles/`、`announcements/` 由 snapshot 脚本自动维护，不要手动编辑；禁止修改 holdings.csv、watchlist.csv、account.csv、operations.csv、rules_params.json、rules_auto.json、experience.md（由 16:00 复盘任务维护）、calibrate.py、auto_params.py、fees.py、fetch_data.py、datasources/、signals_engine.py、signal_store.py、record_signal.py、evaluate.py、build_dashboard.py、`dashboard.html`、`web/style.css`、`web/app.js` 和本规则文件，禁止执行任何交易。
 
 ## 长线风险执行闭环
 

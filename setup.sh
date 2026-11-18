@@ -143,19 +143,19 @@ USAGE
 PORT=8765
 open_board() {
   if command -v open >/dev/null 2>&1; then
-    open "$PROJECT/web/dashboard.html"
+    open "$PROJECT/dashboard.html"
   elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$PROJECT/web/dashboard.html"
+    xdg-open "$PROJECT/dashboard.html"
   elif command -v wslview >/dev/null 2>&1; then
-    wslview "$PROJECT/web/dashboard.html"
+    wslview "$PROJECT/dashboard.html"
   else
-    echo "找不到打开浏览器的命令（open / xdg-open / wslview），请手动打开： $PROJECT/web/dashboard.html" >&2
+    echo "找不到打开浏览器的命令（open / xdg-open / wslview），请手动打开： $PROJECT/dashboard.html" >&2
   fi
 }
 serve() {
   cd "$PROJECT" || exit 1
   if command -v python3 >/dev/null 2>&1; then
-    echo "看板地址： http://localhost:$PORT/web/dashboard.html"
+    echo "看板地址： http://localhost:$PORT/dashboard.html"
     exec python3 -m http.server "$PORT" --bind 127.0.0.1
   else
     echo "找不到 python3，无法启动 HTTP 服务" >&2; exit 1
@@ -205,7 +205,7 @@ if [ $CHECK = 1 ]; then
   else
     fail "snapshot 失败，检查网络"
   fi
-  python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json / dashboard.js 已生成（可直接打开 web/dashboard.html 查看）" || fail "dashboard 数据生成失败"
+  python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json / dashboard.js 已生成（可直接打开根目录 dashboard.html 查看）" || fail "dashboard 数据生成失败"
 fi
 if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
   OID=$(python3 -c "import json;print(json.load(open('setup/crons.json'))['feishu_open_id'])")

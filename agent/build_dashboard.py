@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成看板数据 dashboard.json + dashboard.js（供 web/dashboard.html 加载）。
+"""生成看板数据 dashboard.json + dashboard.js（供根目录 dashboard.html 加载）。
 
   python3 main.py dashboard            # 用 cache/snapshot_latest.json 聚合，写 data/derived/dashboard.json 与 dashboard.js
   python3 main.py dashboard fresh=true # 强制重新拉一次盘中 snapshot 后再聚合
@@ -7,9 +7,9 @@
 输出：
 - data/derived/dashboard.json：结构化数据本体（机器可读，便于复查/其他脚本消费）。
 - data/derived/dashboard.js：同一份数据包装成 `window.FW_DASHBOARD_DATA = {...}`，
-  由前端用 <script src> 加载。这样双击 web/dashboard.html（file://）也能取到数据，
+  由前端用 <script src> 加载。这样双击根目录 dashboard.html（file://）也能取到数据，
   因为 <script src> 不受 fetch/XHR 在 file:// 下的 CORS 限制，无需启动本地 HTTP 服务。
-前端入口是 web/dashboard.html：优先读 dashboard.js；通过 HTTP 访问时若 JS 缺失则回退 fetch dashboard.json。
+前端入口是根目录 dashboard.html（前端资源在 web/）：优先读 dashboard.js；通过 HTTP 访问时若 JS 缺失则回退 fetch dashboard.json。
 页面中行情为外链 JSONP（同样是 script 标签），file:// 下也能实时拉取。
 profiles/、announcements/、logs/、thesis.json（定位前提）、cache/commodity.json（关联商品价格，盘前快照写入），日 K / 技术位 / 汇率读 cache/ 本地缓存（不联网；fresh=true 时才联网刷新），页面打开后再实时拉取；「长线 & 政策」页读 core_auto.json
 （core_value.py review 生成：分仓、目标价、行业景气 = 基础分 + 衰减政策分、个股建议总表）和最新一期
