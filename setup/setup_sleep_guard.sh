@@ -1,10 +1,10 @@
 #!/bin/bash
 # 安装/卸载「休眠兜底」组件：数据采集 + 错过时段补跑 + 定时唤醒。
 #
-#   ./setup_sleep_guard.sh install     安装（定时唤醒需要 sudo）
-#   ./setup_sleep_guard.sh uninstall   卸载
-#   ./setup_sleep_guard.sh wake         只设置/续期定时唤醒（需要 sudo）
-#   ./setup_sleep_guard.sh status       查看状态
+#   ./setup/setup_sleep_guard.sh install     安装（定时唤醒需要 sudo）
+#   ./setup/setup_sleep_guard.sh uninstall   卸载
+#   ./setup/setup_sleep_guard.sh wake         只设置/续期定时唤醒（需要 sudo）
+#   ./setup/setup_sleep_guard.sh status       查看状态
 #
 # 背景：MiniMax Code 的 cron 调度器跑在 GUI 进程里，机器合盖睡眠期间到点的任务会被
 # 静默跳过且不补跑。本脚本装两个 launchd agent 兜底：
@@ -13,7 +13,7 @@
 # 另外用 pmset 在每个分析时点前尝试唤醒机器（尽力而为，合盖深睡时可能失效）。
 
 set -u
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AGENT_DIR="$HOME/Library/LaunchAgents"
 PLIST_SRC="$ROOT/setup/launchd"
 PY="$(command -v python3)"
@@ -77,7 +77,7 @@ setup_wake() {
   # 这只是尽力而为，真正兜底的是 catchup 补跑。
   # pmset repeat 只允许一对重复事件，所以分两层：
   #   1) repeat：每个工作日 07:58 唤醒（长期有效）
-  #   2) schedule：未来 WAKE_DAYS 天每个时点的一次性唤醒（到期需重跑 ./setup_sleep_guard.sh wake 续期）
+  #   2) schedule：未来 WAKE_DAYS 天每个时点的一次性唤醒（到期需重跑 ./setup/setup_sleep_guard.sh wake 续期）
   echo "  设置定时唤醒（需要 sudo）…"
   sudo -v || { echo "  ✗ 未获得 sudo 权限，跳过定时唤醒"; return 1; }
   sudo pmset repeat wakeorpoweron MTWRF 07:58:00 || echo "  ✗ repeat 设置失败"
@@ -89,7 +89,7 @@ setup_wake() {
     if sudo pmset schedule wake "$s" "$WAKE_OWNER" >/dev/null 2>&1; then n=$((n+1)); else fail=$((fail+1)); fi
   done < <(wake_slots)
   echo "  ✓ 每日 07:58 重复唤醒 + 一次性唤醒 $n 个（失败 ${fail}，覆盖未来 ${WAKE_DAYS} 天工作日）"
-  echo "    到期前重跑 ./setup_sleep_guard.sh wake 续期；用 'pmset -g sched' 查看"
+  echo "    到期前重跑 ./setup/setup_sleep_guard.sh wake 续期；用 'pmset -g sched' 查看"
 }
 
 unset_wake() {
@@ -132,7 +132,7 @@ case "${1:-install}" in
     pmset -g sched
     last="$(own_slots | tail -1)"
     if [ -n "$last" ]; then echo "  本项目一次性唤醒 $(own_slots | wc -l | tr -d ' ') 个，最后一个：${last}（之后需续期）"
-    else echo "  本项目一次性唤醒：无（运行 ./setup_sleep_guard.sh wake 设置）"; fi
+    else echo "  本项目一次性唤醒：无（运行 ./setup/setup_sleep_guard.sh wake 设置）"; fi
     echo
     echo "=== 快照归档 ==="
     ls -la "$ROOT/cache/snapshots/" 2>/dev/null | tail -8 || echo "  (无)"

@@ -213,7 +213,7 @@ MiniMax Code 的 cron 调度器跑在 **GUI 进程**里（应用是 Electron，�
 - `pmset` 的 `sleep 0` 挡不住**合盖睡眠**——没有外接显示器时合盖必然进入硬件深睡，软件层面无法阻止。
 - 调度器在应用启动时重算 `next_run`，把已错过的触发点**直接跳过，不补跑**（可在 `~/.minimax/v2/sqlite/runtime-state.sqlite` 的 `local_runtime_v2_scheduler_jobs.updated_at_ms` 看到它等于应用启动时刻）。
 
-因此装两个 launchd agent 兜底（`./setup_sleep_guard.sh install`）：
+因此装两个 launchd agent 兜底（`./setup/setup_sleep_guard.sh install`）：
 
 | Agent | 频率 | 作用 |
 |---|---|---|
@@ -225,7 +225,7 @@ MiniMax Code 的 cron 调度器跑在 **GUI 进程**里（应用是 Electron，�
 1. **有快照才写行情结论**，没有快照就如实写「数据缺失」，绝不编造。
 2. **补跑只记录数据，不发飞书**——避免用过期数据做投资提醒。
 
-另有一层定时唤醒（`./setup_sleep_guard.sh wake`，需要 sudo），在每个分析时点前 2 分钟尝试唤醒机器。`pmset repeat` 只能设一对重复事件，所以拆成两层：`repeat` 负责工作日 07:58 唤醒，长期有效；其余时点用 `pmset schedule` 登记一次性唤醒（owner=fatewheel），覆盖未来 30 天，到期要重跑 `wake` 续期，`status` 里能看到最后一个唤醒点。合盖深睡时唤醒可能失效，属于尽力而为；真正的兜底是上面的 catchup。
+另有一层定时唤醒（`./setup/setup_sleep_guard.sh wake`，需要 sudo），在每个分析时点前 2 分钟尝试唤醒机器。`pmset repeat` 只能设一对重复事件，所以拆成两层：`repeat` 负责工作日 07:58 唤醒，长期有效；其余时点用 `pmset schedule` 登记一次性唤醒（owner=fatewheel），覆盖未来 30 天，到期要重跑 `wake` 续期，`status` 里能看到最后一个唤醒点。合盖深睡时唤醒可能失效，属于尽力而为；真正的兜底是上面的 catchup。
 
 手动使用：
 
@@ -234,7 +234,7 @@ python3 main.py snapshot --slot 09:40 --mode intraday   # 补采某个时点
 python3 main.py snapshot --all                           # 补采当天所有已过时点
 python3 main.py catchup --dry-run                                # 只看缺哪些
 python3 main.py catchup                                          # 补写
-./setup_sleep_guard.sh status                               # 查看 agent / 唤醒 / 快照状态
+./setup/setup_sleep_guard.sh status                               # 查看 agent / 唤醒 / 快照状态
 ```
 
 ## 迁移 / 重新配置
