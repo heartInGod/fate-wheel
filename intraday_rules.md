@@ -23,13 +23,13 @@
 
 ## 步骤
 
-1. 运行 `python3 fetch_data.py snapshot mode=intraday` 获取盘中汇总数据（JSON，接口说明见 `DATA_SOURCES.md`）。
+1. 运行 `python3 main.py fetch snapshot mode=intraday` 获取盘中汇总数据（JSON，接口说明见 `DATA_SOURCES.md`）。
    - 若 `market.a_open_today` 为 false（节假日休市），直接结束，不发消息、不写日志（盘前任务已记录休市）。
    - 若整体报错，在当天日志追加一行 `## HH:MM 盘中分析` + `- 结论：数据接口报错（错误摘要）`，然后结束；若只是 `errors` 里个别接口失败，照常分析，在日志里注明缺了哪项数据。
    - 汇总里每只持仓含：实时行情、盈亏、`tech`（均线、近20/60日高低点等技术位）、`fund_flow_today`（当日资金流）、`announcements_today`（当日公告）、`announcements_new`（上次同步后新收录的公告，**重点看**）；另有 `indices` 指数、`etf_premium` ETF 溢价、`connect_flow` 南向资金、`sector_flow_in/out` 板块资金榜；`market_pulse` 宽基 ETF 量能、`policy_news` 近 35 分钟政策 / 国家队相关快讯（见下方「大盘脉搏」）；`watchlist` 为自选股（未持有，见下方「自选股」）的行情 + `tech`（前一交易日及以前的技术位）+ `focus` 关注要点。
-   - 需要更多数据时单独调用接口，例如 `python3 fetch_data.py stock_news keyword=旭光电子 n=5`、`python3 fetch_data.py fund_flow_daily code=600353 days=5`；判断公告或新闻对公司影响有多大时，直接读本地资料档案 `profiles/{代码}.md`（主营构成、经营评述；ETF 为跟踪指数和前十大持仓，港股如 `profiles/0100.HK.md`），历史公告看 `announcements/{代码}.md`。
+   - 需要更多数据时单独调用接口，例如 `python3 main.py fetch stock_news keyword=旭光电子 n=5`、`python3 main.py fetch fund_flow_daily code=600353 days=5`；判断公告或新闻对公司影响有多大时，直接读本地资料档案 `profiles/{代码}.md`（主营构成、经营评述；ETF 为跟踪指数和前十大持仓，港股如 `profiles/0100.HK.md`），历史公告看 `announcements/{代码}.md`。
 2. 读取 `holdings.csv`（当前定位、持仓数量、成本价；行情脚本输出里每只持仓的 `thesis` 是定位前提（thesis.json，由 09:00 盘前核实）：**理由只能引用状态为「成立」的前提**，「存疑」「失效」或 stale（超期未核实）的前提不得用来否决低吸/加仓或支持高抛/减仓，前提必须双向使用；定位由 09:00 盘前按模型分析自动调整（`thesis.changed` 为近 3 天的调整记录），盘中按 holdings.csv 当前定位执行；盘中只读 thesis，不调用 thesis.py；每只持仓的 `commodity` 是关联商品价格（盘前缓存，钨价等日更品种当天下午才出新报价，盘中不联网刷新），只作前提背景参考，不单独触发信号；**行情脚本输出里的 `available` 已是按 T+1 推导后的今日可卖数量**，直接用它，不要再手工扣减冻结份额；行情脚本输出里还带 shares/cost/market_value/pnl/pnl_pct/stance/locked_today）、`account.csv`（总资产、可用资金）和当天日志 `logs/yyyyMMdd.md`（了解盘前判断和今天已发出的提醒）；再读经验文档 `experience.md` 的「一、经验条目」「二、标的笔记」（历次复盘沉淀的经验与关键价位，第 4 步判断时逐条对照；「三、执行偏差」只用于改进提醒措辞，不得据此改变判断）。
-3. **规则引擎先算候选**：运行 `python3 signals_engine.py`（读第 1 步刚生成的 `cache/snapshot_intraday.json`），输出 JSON：
+3. **规则引擎先算候选**：运行 `python3 main.py signals`（读第 1 步刚生成的 `cache/snapshot_intraday.json`），输出 JSON：
    - `candidates`：本时点的规则候选（阈值按「动态阈值、EV 与仓位」一节随个股波动率和市场状态调整，已和今天的信号去重；数量已按 EV、单只仓位上限、现金底线和 `available` 算好）。每条有 `id`、`type`/`label`、`price`、`zone`（建议区间）、`qty`、`reason`、`metrics`（涨跌、振幅、距低点回升、技术位等）、`ev`（扣手续费后的期望收益：`ev_pct`、`ev_yuan`、`fee_yuan`、`win` 胜率、`n` 样本数、`regime` 市场状态）、`flags`（提醒，如“EV 依据不足，仅供参考”）。
    - `suppressed`：被屏蔽的候选（`blocked`=如 ETF 溢价超限不追；`group_suppressed`=二选一里较弱的一只；`ev_negative`=扣手续费后 EV ≤ 0、单笔 EV 低于 20 元门槛，或该标的仓位已到上限 / 现金不足 / 交易仓已到预算上限；`blocked` 还包括买入类「上方 20/60 日高点距现价不足 3% 目标价差」；`capped`=自选股本时点超过 3 条的部分，未记录，下个时点仍满足会再出现），只作参考，不提醒。
    - `auto`：本次用的市场状态（`regime_name` 强势/震荡/弱势）、k 值与仓位约束；`enabled=false` 表示校准文件缺失或过期，阈值回退到固定值、不算 EV，日志里注明。
@@ -39,10 +39,10 @@
    - `portfolio`：两仓归属与交易仓预算（`note` 一句话写进日志）；`open_trades`：交易仓里还在持有期内的买入，`action=take_profit`（现价已到止盈价）或 `expire`（已持有满 5 个交易日）的要提醒卖出这一笔（数量用它的 `qty`，不超过 `available`），`hold` 的不用提。见下方「两仓制」。
    - 引擎报错时在日志注明「规则引擎失败（错误摘要）」，本次改为按第 4 步的定性规则自行判断，并用 `record_signal.py add` 记录。
 4. **大模型逐条判断**（判断依据只看市场本身）：结合股价走势（实时价、昨收、开盘、日内高低、涨跌幅、换手）、公司公告、新闻、板块与资金面，对每条候选给出结论：
-   - 采纳：`python3 record_signal.py decide <id> accept --note 一句理由`
-   - 否决：`python3 record_signal.py decide <id> reject --note 否决原因`（例如：公告利空导致支撑失效、板块资金大幅流出、量能不配合、价位已被击穿）
+   - 采纳：`python3 main.py record decide <id> accept --note 一句理由`
+   - 否决：`python3 main.py record decide <id> reject --note 否决原因`（例如：公告利空导致支撑失效、板块资金大幅流出、量能不配合、价位已被击穿）
    - 价位或数量需要调整：先否决原候选（note 写「改为…」），再用 `add` 记一条调整后的信号。
-   - 规则没覆盖、但你认为必须提醒的信号（公告/新闻驱动、突发利空等），先运行 `python3 calibrate.py ev --code 代码 --type add|t_low|t_high|reduce|stop|watch_dip|watch_break --price 现价 [--qty 股数]` 查 EV 和建议数量（数量取它给的、不超过；status 为 ev_negative（EV ≤ 0 或低于 EV 门槛 20 元）的买入/做T/减仓只有公告/新闻等新信息足以推翻历史统计时才提，note 里写明理由；输出的 `ev.breakeven_yuan` 是保本金额，可操作金额低于它的单子 EV 必然为负，不要提；止损不受限），再用 `python3 record_signal.py add --code 代码 --type 加仓|做T低吸|做T高抛|减仓|止损|溢价|不加仓|异动|自选低吸|自选突破 --price 现价 [--zone 低~高] [--qty 股数] [--back 低~高] --note 理由` 记录（做T必须带 `--back`，见下方「做T必须成对」）。`add` 会自动去重（同标的同方向今天已提醒过且价格变化 < 3% 时拒绝，返回码 3）；确有新理由才加 `--force`。
+   - 规则没覆盖、但你认为必须提醒的信号（公告/新闻驱动、突发利空等），先运行 `python3 main.py calibrate ev --code 代码 --type add|t_low|t_high|reduce|stop|watch_dip|watch_break --price 现价 [--qty 股数]` 查 EV 和建议数量（数量取它给的、不超过；status 为 ev_negative（EV ≤ 0 或低于 EV 门槛 20 元）的买入/做T/减仓只有公告/新闻等新信息足以推翻历史统计时才提，note 里写明理由；输出的 `ev.breakeven_yuan` 是保本金额，可操作金额低于它的单子 EV 必然为负，不要提；止损不受限），再用 `python3 main.py record add --code 代码 --type 加仓|做T低吸|做T高抛|减仓|止损|溢价|不加仓|异动|自选低吸|自选突破 --price 现价 [--zone 低~高] [--qty 股数] [--back 低~高] --note 理由` 记录（做T必须带 `--back`，见下方「做T必须成对」）。`add` 会自动去重（同标的同方向今天已提醒过且价格变化 < 3% 时拒绝，返回码 3）；确有新理由才加 `--force`。
    - 定性规则（候选的来源，也是判断时的参考）：
      - **止损/清仓**：定位为减仓/清仓的标的反弹到压力位（适合卖出），或跌破关键支撑位（如 MINIMAX-W 跌破 165 警戒 / 155 止损港元）。
      - **做T**：做T类标的日内振幅 ≥ 动态阈值（该标的 ATR×k，见下方「动态阈值、EV 与仓位」；校准缺失时为 3%），价格接近日内高点（可高抛）或从低点明显回升（可低吸），给参考价位区间。
@@ -65,16 +65,16 @@
    - 有 `ev` 的信号再加一句「EV 约 +x 元（胜率 p%，样本 n）」；`flags` 里有“仅供参考”的写「EV 依据不足」
    - 自选股信号放在持仓信号之后，单独一组「👀 自选股」，每条：名称 + 现价与涨跌幅 + 建仓区间 + 首仓股数（约 x 元）+ 一句理由，例如「👀自选低吸 恒立液压 85.19(+2.7%) 82.3~85.2 建仓 100 股约 8500 元｜回踩 MA20 收回」
    - 末尾：仅供参考，不构成投资建议
-   发送成功后运行 `python3 record_signal.py sent <id> [<id> ...]`（列出本次发出的所有信号 id）；发送失败运行 `python3 record_signal.py send-failed <id> ...`，在日志说明原因（如 lark-cli auth status 显示过期），不要反复重试。
-6. 无论有无信号，都按「日志约定」把本次结论追加到当天日志；无新信号时不发飞书消息。可用 `python3 record_signal.py list` 核对本时点各信号的状态。
+   发送成功后运行 `python3 main.py record sent <id> [<id> ...]`（列出本次发出的所有信号 id）；发送失败运行 `python3 main.py record send-failed <id> ...`，在日志说明原因（如 lark-cli auth status 显示过期），不要反复重试。
+6. 无论有无信号，都按「日志约定」把本次结论追加到当天日志；无新信号时不发飞书消息。可用 `python3 main.py record list` 核对本时点各信号的状态。
 7. 15:00 那一次运行：在日志里追加收盘小结（各持仓收盘价与涨跌幅、今日提醒回顾——做T逐条写反向腿是否到价、自选股提醒写收盘价相对建仓区间、明日关注点）；若今天发过提醒，再把简短收盘小结发一条飞书。建议的对错由 16:00 的收盘评估任务（`evaluate.py`）统一打分，这里不用自评。
-8. 写完日志（并完成通知）后运行 `python3 build_dashboard.py` 刷新看板 `dashboard.html`（失败不影响本次任务，日志里注明即可）。
+8. 写完日志（并完成通知）后运行 `python3 main.py dashboard` 刷新看板 `dashboard.html`（失败不影响本次任务，日志里注明即可）。
 9. 只允许追加写 `logs/` 下的日志文件、通过 `signals_engine.py` / `record_signal.py` 写 `logs/signals/`，以及由 `build_dashboard.py` 重新生成 `dashboard.html`；`profiles/`、`announcements/` 由 snapshot 脚本自动维护，不要手动编辑；禁止修改 holdings.csv、watchlist.csv、account.csv、operations.csv、rules_params.json、rules_auto.json、experience.md（由 16:00 复盘任务维护）、calibrate.py、auto_params.py、fees.py、fetch_data.py、datasources/、signals_engine.py、signal_store.py、record_signal.py、evaluate.py、build_dashboard.py、dashboard_template.html 和本规则文件，禁止执行任何交易。
 
 ## 长线风险执行闭环
 
 - 引擎 `core_risk` / 盘前 `core.items[].risk` 必须同时查看状态、原因、剩余暴露和可执行数量；普通 `review` 与经确认的关键逻辑失效是两回事。`risk_exit=true` 候选不得被做T、短线EV或护盘背景降级；无可卖数量、停牌/跌停无法执行时仍保留风险，不声称已经减仓。
-- 风控契约通过 `python3 thesis.py contract` 明确登记持有逻辑、指标、兑现日期、关键前提ID、失效动作与恢复条件。不能把研究假设记成“成立”的事实；减仓比例必须明确配置，不使用默认比例。未补齐的标的显示覆盖缺口并暂停新增。
+- 风控契约通过 `python3 main.py thesis contract` 明确登记持有逻辑、指标、兑现日期、关键前提ID、失效动作与恢复条件。不能把研究假设记成“成立”的事实；减仓比例必须明确配置，不使用默认比例。未补齐的标的显示覆盖缺口并暂停新增。
 - 建议台账与成交分离：`risk_core.py register --snapshot 路径 --code 代码` 登记固定目标；`risk_core.py mark` 记录发送/受阻/实际成交。`filled` 必须关联唯一成交ID及真实数量；发送、采纳、价格触及均不等于成交，不得据此改 holdings.csv。分批执行只扣剩余待卖数量，不能对剩余持仓再次“卖一半”。基本面风险恢复需有新证据并明确解除，不能因证据过期自动恢复。
 - 本节只提供本地执行协议，不授权自动交易或修改券商持仓。定时任务只读契约；盘中不得改定位或事实状态。
 - B 的 `portfolio_risk` 为影子情景、跨仓暴露、预算及资金流校正净值分析；`risk_policy.json` 当前为 `shadow`，不会覆盖正式股数。`active` 尚未开放，不能只改配置上线。账户过期、资产对账不一致、ETF未知余项必须保留提示，缺净值历史不能编造回撤。
@@ -118,7 +118,7 @@
   - 普通逻辑复查（净利同比转负、ROE 年化 < 10%、同年度一致预期 EPS 累计下调 ≥ 15%、无法定价）提示复查并暂停新增，不直接推导卖出。`thesis.py contract` 明确登记的关键前提，经有效日期、来源和证据确认失效后，由 `risk_core.py` 生成 `reduce/exit` 风险建议；该建议优先于旧目标价、回本要求和短线 EV，不自动下单。缺契约、缺前提、存疑或证据过期不等于逻辑已失效，必须显示待核实。
   - **持仓成本约束**（长线仓例外于下文「不因成本价改变结论」）：保本价 = 成本价 + 卖出费用（佣金、印花税、过户费）。深套超过 30% 且目标价低于保本价的不加仓，只做T降成本；首批（目标仓位一半）建完后，加仓要求现价比持仓成本至少低 8%（摊薄才有效）；卖出区、清仓区要求现价 ≥ 保本价 × 1.05 才卖，否则继续持有，逻辑复查已触发的除外。盘前 `core` 段的 `cost_block` 非空时按它执行。
   - 最多 `auto.sizing.max_positions` 8 只；碎仓（< 1 万）逻辑只看长线仓。盘中只做T（按交易仓规则，两腿价差 ≥ 3%）和 `stop_levels` 防守线，不出加仓、反弹减仓、创新低止损信号。
-  - 每周五收盘后 `python3 core_value.py review` 复查（拉财报、一致预期、5 年 PE，写 `core_auto.json` 和 `logs/core/yyyyMMdd.md`）；盘前 `signals_engine.py --mode premarket` 的 `core` 段按最新价重新分区。`core_auto.json` 超过 10 天未更新或不可用时进入安全态：保留原归属（缺失时读 `core_sleeves.json`，或明确的长线定位），暂停新增及基于旧目标价的卖出，不改成交易仓追涨杀跌；已确认且仍未解除的基本面风险退出继续跟踪。盘前 `core.items[].review_action/review_qty` 按本次快照重新计算，不沿用上周股数。
+  - 每周五收盘后 `python3 main.py core review` 复查（拉财报、一致预期、5 年 PE，写 `core_auto.json` 和 `logs/core/yyyyMMdd.md`）；盘前 `signals_engine.py --mode premarket` 的 `core` 段按最新价重新分区。`core_auto.json` 超过 10 天未更新或不可用时进入安全态：保留原归属（缺失时读 `core_sleeves.json`，或明确的长线定位），暂停新增及基于旧目标价的卖出，不改成交易仓追涨杀跌；已确认且仍未解除的基本面风险退出继续跟踪。盘前 `core.items[].review_action/review_qty` 按本次快照重新计算，不沿用上周股数。
 - **交易仓**（`trade`，市值 ≤ 总资产 20%）：参考量化团队，走本文件的盘中规则，但要低频：
   - 单笔 EV < 20 元（`auto.sizing.min_ev_yuan`）不操作；
   - 每笔要有 ≥ 3% 的目标价差（`sleeves.trade.min_move_pct`）：做T两腿价差 ≥ 3%；买入类（加仓、自选低吸/突破）上方最近的 20/60 日高点距现价不足 3% 的不买，买入后挂 +3% 止盈价，最多持有 5 个交易日，到期收盘前卖出这一笔（引擎 `open_trades` 提醒）；
@@ -138,7 +138,7 @@
 
 - **动态阈值**：振幅、距低点回升、距支撑/压力、突破涨幅这类百分比阈值 = 该标的 ATR20%（近 20 日日均真实波幅）× k。波动大的标的门槛自动变高，波动小的变低。日内位置、量比这类阈值直接校准。港股没有历史分钟数据，百分比阈值仍用固定值。
 - **回放口径**：做T两腿价差 d = max(`pair_min_pct`, 振幅×`pair_amp_frac`, 3%)，当日或次日到价记 +d，否则按 T+1 收盘平仓；买入类（交易仓）次日起 5 个交易日内最高价碰到 +3% 记 +3%，否则按第 5 日收盘计（不满 5 日的样本丢弃，上方空间不足 3% 被屏蔽的不计）；减仓/止损按 T+1 收盘。
-- **校准**：每个交易日 16:00 收盘评估任务运行 `python3 calibrate.py`（漏跑时 `catchup.py` 16:20 后补跑）。它用持仓和自选股近约 40 个交易日的 5 分钟 K 线，逐个时点重放规则引擎，算每条信号扣手续费后的收益，再在 `rules_params.json` 的 `auto.bounds` 范围内搜索使「总净收益 − 波动惩罚」最大的 k，写入 `rules_auto.json`，报告在 `logs/calib/yyyyMMdd.md`。
+- **校准**：每个交易日 16:00 收盘评估任务运行 `python3 main.py calibrate`（漏跑时 `catchup.py` 16:20 后补跑）。它用持仓和自选股近约 40 个交易日的 5 分钟 K 线，逐个时点重放规则引擎，算每条信号扣手续费后的收益，再在 `rules_params.json` 的 `auto.bounds` 范围内搜索使「总净收益 − 波动惩罚」最大的 k，写入 `rules_auto.json`，报告在 `logs/calib/yyyyMMdd.md`。
   - 每天变动不超过 ±30%。
   - 样本少于 30 条的取值不采用。
 - **市场状态**：按沪深300 前一日收盘与 MA20 及 MA20 的 5 日斜率划分：站上 MA20 且斜率向上为强势，跌破且斜率向下为弱势，其余为震荡。回测期内某状态的天数足够（≥15 天）时，该状态单独用一套 k，并向全体结果收缩。
@@ -170,7 +170,7 @@
 - **判断要点**：
   - 低吸要确认是「回踩支撑后止跌」，而不是下跌中继：跌破前20日低后收回的、远低于 MA20 的（`metrics` 里看 ma20/low20），要看当日公告/新闻和板块资金，有利空或板块大幅流出就否决。
   - 突破要看量能和板块：板块整体走强、量比明显放大才采纳；冲高回落（日内位置走低）或消息驱动的一字板不追。
-  - 盘中自选股只有行情，没有当日公告；采纳前用 `python3 fetch_data.py announcements code=代码 days=3` 和 `stock_news` 查一下，必要时读 `profiles/{代码}.md`。盘前同步到的新公告在 `watchlist[].announcements_new`，有重大公告的要在日志里写出来。
+  - 盘中自选股只有行情，没有当日公告；采纳前用 `python3 main.py fetch announcements code=代码 days=3` 和 `stock_news` 查一下，必要时读 `profiles/{代码}.md`。盘前同步到的新公告在 `watchlist[].announcements_new`，有重大公告的要在日志里写出来。
   - 参考 `focus`（ROE、增速、估值、社保动向）。基本面是入选理由，不是买入理由，买点仍只看价格位置和量能。
 - **首仓**：自选股盘中买点归交易仓（不受 8 只上限，受交易仓预算约束；要有 ≥ 3% 上方空间，带 +3% 止盈、最多持有 5 个交易日）。长线仓的新建仓由 `core_value.py` 周度复查给出，不在盘中做。**首仓金额**：校准文件有效时按「动态阈值、EV 与仓位」一节的 1/4 凯利算（单笔 ≤ 总资产 5%，并受可用现金、交易仓预算约束）；校准缺失时按 min(可用资金×3%, 1 万元)。按 100 股取整（科创板 688 最少 200 股）；不足一手时给一手，并在 `flags` 标注超出建议金额，飞书里如实写出金额。同一时点自选股最多提醒 3 条，同一只股票当天已提醒过、价格变化不到 3% 的不重复提醒。
 - **日志**：自选股候选同样写进「规则候选：N 条 → 采纳 a / 否决 r」，信号行用 👀 图标。

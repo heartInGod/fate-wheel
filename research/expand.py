@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+from fw.datamul import data_path  # noqa: E402
 import core_value as cv  # noqa: E402
 import industry_heat as ih  # noqa: E402
 from datasources import capital, quotes  # noqa: E402
@@ -89,7 +90,7 @@ def short_score(t, fl, cha):
 
 
 def run(need):
-    params = json.load(open(os.path.join(ROOT, "rules_params.json"), encoding="utf-8"))
+    params = json.load(open(data_path("rules_params.json"), encoding="utf-8"))
     sc = cv.sleeve_cfg(params)
     cfg = dict(cv.DEFAULTS, **((sc.get("core") or {}).get("screen") or {}), **((sc.get("core") or {}).get("valuation") or {}))
     icfg = ih.cfg_of(sc.get("core"))
@@ -158,7 +159,7 @@ def run(need):
         x["tech"], x["flow"] = t, fl
         x["score"] = round(0.3 * x["q"] + 0.3 * x["u"] + 0.4 * x["s"], 1)
     ok.sort(key=lambda x: -x["score"])
-    cnt = collections.Counter(r["行业"] for r in csv.DictReader(open(os.path.join(ROOT, "watchlist.csv"), encoding="utf-8-sig")))
+    cnt = collections.Counter(r["行业"] for r in csv.DictReader(open(data_path("watchlist.csv"), encoding="utf-8-sig")))
     pick, spare = [], []
     for x in ok:
         if len(pick) < need and cnt[x["ind"]] < IND_CAP and x["s"] >= 40:
@@ -228,7 +229,7 @@ def write_md(pick, spare, n_all, n_pool, n_pre, n_ok, fail):
 
 def apply():
     d = json.load(open(OUT + ".json"))
-    path = os.path.join(ROOT, "watchlist.csv")
+    path = data_path("watchlist.csv")
     have = {r["代码"] for r in csv.DictReader(open(path, encoding="utf-8-sig"))}
     add = [x for x in d["pick"] if x["code"] not in have]
     with open(path, "a", encoding="utf-8", newline="") as f:

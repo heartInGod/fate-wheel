@@ -36,6 +36,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# ---- 个人持仓/账户敏感数据（不入库，远端历史亦应清除）----
+data/portfolio/account.csv
+data/portfolio/holdings.csv
+data/portfolio/operations.csv
+
 # ---- 密钥与本地配置（本项目当前没有，预留防止误提交）----
 .env
 .env.*

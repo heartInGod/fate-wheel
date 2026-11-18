@@ -144,8 +144,8 @@ case "$1" in
     cd "$PROJECT" || exit 1
     case "$2" in
       -o|--open) ;;
-      -f|--fresh) python3 build_dashboard.py fresh=true || echo "生成失败，打开旧看板" ;;
-      "") python3 build_dashboard.py || echo "生成失败，打开旧看板" ;;
+      -f|--fresh) python3 main.py dashboard fresh=true || echo "生成失败，打开旧看板" ;;
+      "") python3 main.py dashboard || echo "生成失败，打开旧看板" ;;
       *) usage; exit 1 ;;
     esac
     open "$PROJECT/dashboard.html"
@@ -168,20 +168,20 @@ esac
 
 # ---------------------------------------------------------------- 5. 自检
 step "5. 自检"
-if N=$(python3 fetch_data.py list 2>/dev/null | grep -c '^|'); then
+if N=$(python3 main.py fetch list 2>/dev/null | grep -c '^|'); then
   ok "fetch_data.py 可运行（接口表 $N 行）"
 else
-  fail "python3 fetch_data.py list 运行失败"
+  fail "python3 main.py fetch list 运行失败"
 fi
 if [ $CHECK = 1 ]; then
   echo "  运行盘中 snapshot（约 10~30 秒）…"
-  if python3 fetch_data.py snapshot mode=intraday > cache/setup_check.json 2>/dev/null; then
+  if python3 main.py fetch snapshot mode=intraday > cache/setup_check.json 2>/dev/null; then
     ERR=$(python3 -c "import json;d=json.load(open('cache/setup_check.json'));print(len(d.get('errors',[])))" 2>/dev/null)
     ok "snapshot 成功，errors ${ERR:-?} 项（详见 cache/setup_check.json）"
   else
     fail "snapshot 失败，检查网络"
   fi
-  python3 build_dashboard.py >/dev/null 2>&1 && ok "dashboard.html 已生成" || fail "build_dashboard.py 失败"
+  python3 main.py dashboard >/dev/null 2>&1 && ok "dashboard.html 已生成" || fail "build_dashboard.py 失败"
 fi
 if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
   OID=$(python3 -c "import json;print(json.load(open('setup/crons.json'))['feishu_open_id'])")

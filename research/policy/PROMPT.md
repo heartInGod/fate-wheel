@@ -28,7 +28,7 @@
 
 ### 3. industries：映射到东财二级行业，并给出强度 s
 
-- 行业名**必须**是东财二级行业名，以 `cache/industry/heat_*.json` 的 `industries` 键为准，例如“半导体”“元件”“电网设备”“航海装备Ⅱ”“IT服务Ⅱ”。写完运行 `python3 policy_signal.py check` 校验。
+- 行业名**必须**是东财二级行业名，以 `cache/industry/heat_*.json` 的 `industries` 键为准，例如“半导体”“元件”“电网设备”“航海装备Ⅱ”“IT服务Ⅱ”。写完运行 `python3 main.py policy check` 校验。
 - 强度 s（整数 −3..+3）：
 
 | s | 判据（必须能在原文中找到对应句子） |
@@ -58,15 +58,15 @@
  "stocks": {"605117": {"s": 1, "why": "…"}}}
 ```
 
-录入后依次运行 `python3 policy_signal.py check`，再运行 `python3 policy_signal.py` 查看衰减后的政策分。
+录入后依次运行 `python3 main.py policy check`，再运行 `python3 main.py policy` 查看衰减后的政策分。
 
 ---
 
 ## Part B：政策分析报告 Prompt
 
 输入：
-- `python3 core_value.py review` 生成的 `logs/core/yyyyMMdd.md`，其中“政策信号”和“个股建议总表”两节由代码生成；
-- `python3 policy_signal.py` 的输出；
+- `python3 main.py core review` 生成的 `logs/core/yyyyMMdd.md`，其中“政策信号”和“个股建议总表”两节由代码生成；
+- `python3 main.py policy` 的输出；
 - 政策原文存档 `research/policy/*.txt`。
 
 输出：`research/policy/yyyyMMdd_政策信号报告.md`，按以下结构写：

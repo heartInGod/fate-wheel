@@ -1,7 +1,20 @@
 # 数据接口说明
 
-统一入口：`python3 fetch_data.py <接口名> key=value ...`，输出 JSON；Python 内可用 `from datasources import call; call("接口名", ...)`。
-`python3 fetch_data.py list` 可随时重新生成下表。代码支持 `600353` / `159813` / `0100.HK` / `00100` / `sh600353` 等写法。
+统一入口：`python3 main.py fetch <接口名> key=value ...`，输出 JSON；Python 内可用 `from datasources import call; call("接口名", ...)`。
+`python3 main.py fetch list` 可随时重新生成下表。代码支持 `600353` / `159813` / `0100.HK` / `00100` / `sh600353` 等写法。
+
+## 本地数据文件归档（datamul）
+
+根目录下的持久化数据文件已按内容性质归档到 `data/` 子目录，文中出现的文件名均指归档后的位置：
+
+| 目录 | 文件 | 性质 |
+|---|---|---|
+| `data/portfolio/` | `account.csv`、`holdings.csv`、`operations.csv`、`thesis.json` | 账户与持仓台账（个人资产） |
+| `data/config/` | `rules_params.json`、`risk_policy.json`、`policy_signals.json`、`core_sleeves.json` | 人维护的规则与策略配置 |
+| `data/derived/` | `rules_auto.json`、`core_auto.json` | 脚本生成的校准 / 复查产物 |
+| `data/watchlist/` | `watchlist.csv` | 自选股名单 |
+
+代码统一通过 `fw/datamul.py` 的 `data_path(文件名)` 读写这些文件，读写路径自动一致；`cache/`、`logs/`、`profiles/`、`announcements/` 等运行时产物仍在原处。可用 `python3 fw/datamul.py check` 校验归档完整性。
 
 ## 接口一览
 
@@ -45,20 +58,20 @@
 
 | 目录 | 内容 | 更新方式 |
 |---|---|---|
-| `profiles/{代码}.md` | 股票：基本信息、公司简介、主营构成（按行业/产品/地区，含收入占比和毛利率）、经营评述、经营范围；ETF：基金档案、投资目标、前十大持仓 | `snapshot mode=premarket` 自动调用 `sync_profiles`，每天最多刷新一次（当天已更新则跳过）；手动强制：`python3 fetch_data.py sync_profiles force=true` |
+| `profiles/{代码}.md` | 股票：基本信息、公司简介、主营构成（按行业/产品/地区，含收入占比和毛利率）、经营评述、经营范围；ETF：基金档案、投资目标、前十大持仓 | `snapshot mode=premarket` 自动调用 `sync_profiles`，每天最多刷新一次（当天已更新则跳过）；手动强制：`python3 main.py fetch sync_profiles force=true` |
 | `announcements/{代码}.md` | 公告档案表：公告日期、标题、类别、来源、收录时间、原文链接 | 盘前和盘中 snapshot 都会调用 `sync_announcements`：首次建档回溯 90 天，之后每次拉近 2~3 天、按链接去重后增量追加，只增不删。snapshot 里的 `announcements_new` 就是本次新收录的公告 |
 
 - 文件名用代码，港股沿用 holdings.csv 写法（`0100.HK.md`）。holdings.csv 新增持仓后，下次运行会自动建档；已清仓的标的档案保留不删。
 - 两个目录都由脚本生成，不要手动编辑（公告档案靠解析表格行来去重）。
 - 「收录时间」是本地第一次抓到这条公告的时间，可用来区分盘后新出的公告。
-- 读档案不联网：`python3 fetch_data.py read_profile code=600353`、`python3 fetch_data.py read_announcements code=0100.HK days=30`。
+- 读档案不联网：`python3 main.py fetch read_profile code=600353`、`python3 main.py fetch read_announcements code=0100.HK days=30`。
 
 ## 使用说明
 
 - **定时任务入口**：盘前 `snapshot mode=premarket`，盘中 `snapshot mode=intraday`。单个接口失败只记入 `errors`，不影响其余数据。
 - **限速与熔断**（`datasources/_http.py`）：同一站点（同一主域的子域名共用节奏，如腾讯 gtimg.cn/qq.com）两次请求间隔 = 基础间隔 + 随机抖动（`_PACE`，腾讯 0.25+0~0.35 秒、东财 0.4+0~0.25 秒），每连续 3 次再随机停 1~3 秒；同一 host 连续 3 次被拦 / 5xx / 连不上即熔断 10 分钟（期间直接报错不发请求，到期放一个试探）。因此批量任务明显变慢：盘中快照约 2~3 分钟。
 - **本地缓存**：`quotes.kline` 每次成功拉前复权日 K 都合并写入 `cache/kline/<代码>.json`（最多 250 根）；`ops.trading_days` 当天开盘后抓过就直接用缓存；看板 `build_dashboard.py` 默认只读缓存（日 K、自选技术位 `cache/watch_tech.json`、汇率 `cache/hkd_cny.json`），`fresh=true` 才联网。
-- **商品价格**（`datasources/commodity.py`）：只在盘前 snapshot 联网拉持仓关联的品种（关联关系存 thesis.json 的 `commodities`，用 `python3 thesis.py link 代码 品种…` 设置），结果合并写入 `cache/commodity.json`；盘中 snapshot 和看板只读这份缓存。钨精矿/APT 来自中钨在线 ctia.com.cn 的「钨制品价格走势」日评（WordPress REST，交易日约 14:00 发布，正文句子解析+离群过滤）；国内期货用新浪日 K（不含当天）+ hq.sinajs.cn 实时价补当天；外盘 OIL/CL/NG 用新浪外盘日 K；BDI 用东财 `RPT_INDUSTRY_INDEX`（去掉同值占位条）。100ppi 生意社有 JS cookie 反爬、chinatungsten 新闻页 10-19 起停更，均未采用。
+- **商品价格**（`datasources/commodity.py`）：只在盘前 snapshot 联网拉持仓关联的品种（关联关系存 thesis.json 的 `commodities`，用 `python3 main.py thesis link 代码 品种…` 设置），结果合并写入 `cache/commodity.json`；盘中 snapshot 和看板只读这份缓存。钨精矿/APT 来自中钨在线 ctia.com.cn 的「钨制品价格走势」日评（WordPress REST，交易日约 14:00 发布，正文句子解析+离群过滤）；国内期货用新浪日 K（不含当天）+ hq.sinajs.cn 实时价补当天；外盘 OIL/CL/NG 用新浪外盘日 K；BDI 用东财 `RPT_INDUSTRY_INDEX`（去掉同值占位条）。100ppi 生意社有 JS cookie 反爬、chinatungsten 新闻页 10-19 起停更，均未采用。
 - **官方优先**：公告 A股走巨潮资讯、港股走港交所披露易，失败时自动回退东方财富。
 - **自动回退**：东方财富对高频请求会临时封 IP（断开连接），`fund_flow_realtime` / `fund_flow_daily` / `sector_flow` 失败时自动改用新浪财经；脚本对东方财富强制每次请求间隔 0.4 秒。
 - **单位**：资金类为元（`connect_flow` 为万元），涨跌幅/占比为 %，市值为亿元。
@@ -75,10 +88,10 @@
 
 ## 持仓看板
 
-- 生成：`python3 build_dashboard.py`（默认读 `cache/snapshot_latest.json`；加 `fresh=true` 先重跑一次盘中 snapshot）。输出单文件 `dashboard.html`，模板为 `dashboard_template.html`。
+- 生成：`python3 main.py dashboard`（默认读 `cache/snapshot_latest.json`；加 `fresh=true` 先重跑一次盘中 snapshot）。输出单文件 `dashboard.html`，模板为 `dashboard_template.html`。
 - 定时任务写完日志后会自动刷新看板。
 - 页面：持仓总览 / 个股详情（日K、技术位、资金流、公告、资料）/ 分析日志 / 操作日志。浏览器联网时每 30 秒从腾讯行情刷新实时价。
-- 实际成交记录在 `operations.csv`（UTF-8 BOM），表头 `日期,时间,操作,名称,代码,数量,价格,备注`，例如 `2026-10-30,10:05,卖出,旭光电子,600353,1000,12.30,止损`。用 `python3 record_op.py 买入 600353 500 19.80 --note 理由` 追加。
+- 实际成交记录在 `operations.csv`（UTF-8 BOM），表头 `日期,时间,操作,名称,代码,数量,价格,备注`，例如 `2026-10-30,10:05,卖出,旭光电子,600353,1000,12.30,止损`。用 `python3 main.py record-op 买入 600353 500 19.80 --note 理由` 追加。
 
 ## 可用数量（T+1 自动推导）
 
@@ -97,11 +110,11 @@ available(今天) = shares(今天) − locked(今天)
 
 **日常维护**：
 
-1. 成交后跑 `python3 record_op.py 买入 600353 500 19.80`（或 `卖出`）。港股写 `0100.HK` 即可。
+1. 成交后跑 `python3 main.py record-op 买入 600353 500 19.80`（或 `卖出`）。港股写 `0100.HK` 即可。
 2. 把 `holdings.csv` 的 `持仓数量` 同步为最新值，并把 `可用基准日` 更新为**该快照对应的日期**（通常是最后一次改仓当天）。
 3. 「可用数量」列不再需要手工改——它由基准日 + `operations.csv` 推导；建议把它当作基准日的快照值，只在重设基准日时更新。
 
-推导逻辑的单元测试：`python3 test_ops.py`（覆盖跨交易日、跨周末、当日买入冻结、次日解冻、卖出、T+0、无基准日等场景）。
+推导逻辑的单元测试：`python3 main.py test`（覆盖跨交易日、跨周末、当日买入冻结、次日解冻、卖出、T+0、无基准日等场景）。
 
 ## 规则量化与收盘评估
 
@@ -114,8 +127,8 @@ available(今天) = shares(今天) − locked(今天)
 | `auto_params.py` / `fees.py` | 动态阈值换算（阈值 = 标的 ATR20% × k）、EV 查表（规则×品种×市场状态，分层收缩）、按 EV 反推保本金额/有效金额（不设固定最低金额）、凯利定量与仓位/现金约束；`fees.py` 按银河证券收费说明估算手续费 |
 | `signals_engine.py` | 读快照算候选：同标的同方向按优先级合并、二选一分组、与当天已有信号去重（价格变化 < 3%）、卖出量按 `available` 封顶、加仓量按可用资金取整手；做T候选自动附成对区间 `pair_zone`（偏移 d=max(`t.pair_min_pct`, 当日振幅×`t.pair_amp_frac`, `sleeves.trade.min_move_pct` 3%)，宽 `t.pair_width_pct`）。`rules_auto.json` 有效（≤4 天）时阈值按标的 ATR 动态换算，每条买卖候选附 `ev` 并按 EV/仓位重算 `qty`，EV ≤ 0、EV < 20 元或仓位/现金/交易仓预算到顶的标 `ev_negative`（止损只标注），买入类上方空间 < 3% 的标 `blocked`、够的附 `tp_price`（+3%）与 `hold_days`；持仓按两仓评估（长线仓只做T），只数上限与碎仓只看长线仓，碎仓减仓改为清仓；输出 `auto` 段（市场状态、k）、`portfolio` 段（长线仓只数/碎仓、交易仓市值/预算）和 `open_trades`（交易仓买入的止盈/到期提醒）。`--mode premarket` 输出各标的支撑/压力位，以及动态阈值 `thresholds`、仓位占比、可买空间 `buy_room_yuan`（交易仓叠加剩余预算，长线仓为 null）/ `cash_room_yuan`，以及 `core`（长线仓分区、目标价）与 `open_trades` |
 | `core_value.py` | 长线仓（两仓制的 80%）：东方财富 datacenter 拉估值（PE/PB 及 5 年分位）、一致预期 EPS 与机构目标价、财报（营收/净利同比、ROE），目标价 = 一致预期 EPS × 合理 PE（5 年 PE 中位数，限制在 [8, 40]，不高于机构最高目标价）；按现价相对目标价分 买入区（空间 ≥ 30%，补到目标仓位 10%，分 2 批）/ 持有区 / 卖出区（到目标价卖一半）/ 清仓区（≥ 目标×1.15）；净利同比转负、ROE 不达标、一致预期 EPS 下调 ≥ 15% 时标「逻辑复查」（不自动卖）。港股、亏损股和 `sleeves.trade.force` 归交易仓；ETF 由 `etf_value.py` 按指数估值法判断（见下一行）。长线持仓还要过持仓成本约束 `cost_gate`：保本价 = 成本价 + 卖出费用；深套 > 30% 且目标价 < 保本价的只做T不加仓，首批之后的加仓要求现价 ≤ 成本×0.92，卖出要求现价 ≥ 保本价×1.05（逻辑复查触发的除外）；`status` 输出 cost / breakeven / pnl_pct / cost_block。`review` 每周复查（周五任务），写 `core_auto.json`（持仓分仓 + 长线候选，自动生成，不要手改）与 `logs/core/yyyyMMdd.md`；`status` 输出当前分区 JSON；`--dry-run` 不写文件 |
-| `industry_heat.py` | 行业景气分（被 `core_value.py review` 调用，也可单独 `python3 industry_heat.py [--refresh] [行业名…]` 看排名）：东方财富 datacenter `RPT_LICO_FN_CPD` 按报告期整页拉全市场营收/归母净利/东财二级行业（每页 500 条），`push2 clist m:90+t:2` 行业板块列表，`push2his kline`（板块 1 年日 K 与成交额）与 `fflow/daykline`（近 20 日主力净流入）。每个二级行业算营收/净利 CAGR（同口径样本加总；基期从 2023 年报起算、2022 疫情年不用，之后滚动 3 年）、今年累计净利同比、1 年指数涨幅、20 日主力净流入占比，取全行业百分位加权得景气分；高景气（≥70 且基期以来、今年净利都增长）放宽 PE 上限到 80、合理 PE 上限到 60，低景气（≤30）买入线收紧到 40%，长线仓空位高景气优先。参数在 `rules_params.json` `sleeves.core.industry`；缓存在 `cache/industry/`（年报永久，季报和景气结果当天有效），首次拉取约 1~2 分钟。景气分 = 基础分 + 政策分（见下一行） |
-| `policy_signal.py` / `policy_signals.json` | 政策加分（被 `industry_heat.py` 调用；`python3 policy_signal.py [日期]` 看当天政策分，`python3 policy_signal.py check` 校验）。`policy_signals.json` 是人/Agent 按 `research/policy/PROMPT.md` Part A 录入的国家级政策事件库（发改委/国务院新闻办发布会实录：`{直播页URL}wzsl/wenzi.json`；政策文件、部委文章等），每个事件给东财二级行业打强度 s∈[−3,+3]，个别主业与东财分类不一致的公司可在 stocks 里打分（≤±2）。权重 = 0.5^(天数/半衰期)，半衰期 讲话 5 / 发布会 7 / 监管规则 15 / 政策文件 20 / 资金落地 30 天，权重 < 0.05 失效；行业政策分 = 10 × clip(Σ s·w / 3, −1, 1)，个股上限 6。政策分不缓存（每天衰减）；高景气的盈利门槛不变。参数在 `sleeves.core.industry.policy`。定时任务只能追加事件，不得改已有事件的 s |
+| `industry_heat.py` | 行业景气分（被 `core_value.py review` 调用，也可单独 `python3 main.py industry [--refresh] [行业名…]` 看排名）：东方财富 datacenter `RPT_LICO_FN_CPD` 按报告期整页拉全市场营收/归母净利/东财二级行业（每页 500 条），`push2 clist m:90+t:2` 行业板块列表，`push2his kline`（板块 1 年日 K 与成交额）与 `fflow/daykline`（近 20 日主力净流入）。每个二级行业算营收/净利 CAGR（同口径样本加总；基期从 2023 年报起算、2022 疫情年不用，之后滚动 3 年）、今年累计净利同比、1 年指数涨幅、20 日主力净流入占比，取全行业百分位加权得景气分；高景气（≥70 且基期以来、今年净利都增长）放宽 PE 上限到 80、合理 PE 上限到 60，低景气（≤30）买入线收紧到 40%，长线仓空位高景气优先。参数在 `rules_params.json` `sleeves.core.industry`；缓存在 `cache/industry/`（年报永久，季报和景气结果当天有效），首次拉取约 1~2 分钟。景气分 = 基础分 + 政策分（见下一行） |
+| `policy_signal.py` / `policy_signals.json` | 政策加分（被 `industry_heat.py` 调用；`python3 main.py policy [日期]` 看当天政策分，`python3 main.py policy check` 校验）。`policy_signals.json` 是人/Agent 按 `research/policy/PROMPT.md` Part A 录入的国家级政策事件库（发改委/国务院新闻办发布会实录：`{直播页URL}wzsl/wenzi.json`；政策文件、部委文章等），每个事件给东财二级行业打强度 s∈[−3,+3]，个别主业与东财分类不一致的公司可在 stocks 里打分（≤±2）。权重 = 0.5^(天数/半衰期)，半衰期 讲话 5 / 发布会 7 / 监管规则 15 / 政策文件 20 / 资金落地 30 天，权重 < 0.05 失效；行业政策分 = 10 × clip(Σ s·w / 3, −1, 1)，个股上限 6。政策分不缓存（每天衰减）；高景气的盈利门槛不变。参数在 `sleeves.core.industry.policy`。定时任务只能追加事件，不得改已有事件的 s |
 | `etf_value.py` | ETF 长线评估（被 `core_value.py review` 调用）：中证指数官网 `csindex-home/perf/index-perf`（指数日线，`peg` 字段为 PE TTM，2010 年起）；蛋卷基金 `djapi/index_eva/pe_history/{代码}`（海外指数 PE 历史，约每周一点）+ 新浪 `US_MinKService.getDailyK`（美股指数点位）；东方财富 F10 `jbgk_{代码}.html`（跟踪标的、管理费）、`ulist.np`（ETF 现价/成交额/规模）、`f10/lsjz`（净值）；腾讯行情 IOPV 溢价。指数盈利 = 点位 / PE；准入看盈利 10 年年化、估值历史长度、规模/成交额/费率；目标价 = 净值 × 周期修正盈利 × 10 年中位 PE / 指数点位。ETF → 估值指数的对应写在 `rules_params.json` `sleeves.core.etf.index_map` |
 | `record_signal.py` | 大模型的写入口：`decide <id> accept\|reject --note`、`add`（规则外信号，自带去重，`--force` 强制；加仓/自选买入自动附 `tp_price` = 现价×1.03 与 `hold_days`，`--tp` 可改写；做T必须带 `--back 低~高` 反向区间，否则返回 2 不记录）、`sent` / `send-failed`、`list` |
 | `signal_store.py` | `logs/signals/yyyyMMdd.jsonl` 事件流（candidate / add / decision / sent / send_failed），只追加；被否决的信号仍参与去重，发送失败的不参与 |
@@ -135,13 +148,13 @@ available(今天) = shares(今天) − locked(今天)
 定时任务：16:00 收盘评估任务运行 `evaluate.py`，写复盘、发飞书简报，并更新经验文档 `experience.md`（追加当日复盘段、维护经验条目 / 标的笔记 / 执行偏差），最后归档当天本项目的定时任务会话（purpose 为 `cron:main:*`，手动会话不动；非交易日也会执行归档）；09:00 盘前任务读取上一交易日的评估报告、summary 和 `experience.md` 做复盘（16:00 漏跑时由 09:00 盘前补写经验文档的复盘段），盘中任务每次分析前读 `experience.md` 的经验条目与标的笔记。16:00 任务还运行 `calibrate.py` 更新次日的动态阈值并在飞书简报里报告参数变化。每周五 17:00 的长线复查任务运行 `core_value.py review`，更新 `core_auto.json`（持仓分仓、目标价、分区）并发飞书周报；09:00 盘前任务通过 `signals_engine.py --mode premarket` 的 `core` 段读取长线仓分区，长线持仓出财报/重大公告时也会补跑 review。机器休眠漏跑时，catchup 会在 16:10 之后补跑 evaluate 和 calibrate（不发飞书）；盘中补跑的时段也会用引擎回放候选（source=catchup）。
 
 ```bash
-python3 signals_engine.py --no-record                     # 看当前快照会出哪些候选（不记录）
-python3 signals_engine.py --snapshot cache/snapshots/20261030_1315.json --no-record
-python3 record_signal.py list                             # 今天各信号的状态
-python3 evaluate.py [--date yyyyMMdd]                     # 生成评估报告
-python3 calibrate.py show                                 # 当前市场状态、k 值、各持仓阈值与仓位空间
-python3 calibrate.py ev --code 159813 --type add --price 0.53   # 自补信号的 EV 与建议数量
-python3 test_signals.py                                   # 引擎/记录/评估/EV 的离线测试
+python3 main.py signals --no-record                     # 看当前快照会出哪些候选（不记录）
+python3 main.py signals --snapshot cache/snapshots/20261030_1315.json --no-record
+python3 main.py record list                             # 今天各信号的状态
+python3 main.py evaluate [--date yyyyMMdd]                     # 生成评估报告
+python3 main.py calibrate show                                 # 当前市场状态、k 值、各持仓阈值与仓位空间
+python3 main.py calibrate ev --code 159813 --type add --price 0.53   # 自补信号的 EV 与建议数量
+python3 main.py test                                   # 引擎/记录/评估/EV 的离线测试
 ```
 
 ## 自选股（社保优选 30 只）
@@ -217,10 +230,10 @@ MiniMax Code 的 cron 调度器跑在 **GUI 进程**里（应用是 Electron，�
 手动使用：
 
 ```bash
-python3 collect_snapshot.py --slot 09:40 --mode intraday   # 补采某个时点
-python3 collect_snapshot.py --all                           # 补采当天所有已过时点
-python3 catchup.py --dry-run                                # 只看缺哪些
-python3 catchup.py                                          # 补写
+python3 main.py snapshot --slot 09:40 --mode intraday   # 补采某个时点
+python3 main.py snapshot --all                           # 补采当天所有已过时点
+python3 main.py catchup --dry-run                                # 只看缺哪些
+python3 main.py catchup                                          # 补写
 ./setup_sleep_guard.sh status                               # 查看 agent / 唤醒 / 快照状态
 ```
 
