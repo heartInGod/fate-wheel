@@ -2,6 +2,7 @@
 import os as _os, sys as _sys
 _root = _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__)))
 _sys.path.insert(0, _root)
+_sys.path.insert(0, _os.path.join(_root, "common"))
 from paths import setup_sys_path as _ssp; _ssp()
 """规则引擎 / 信号记录 / 收盘评估的离线单元测试：python3 test_signals.py
 

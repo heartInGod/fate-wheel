@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "common"))
 from datamul import data_path  # noqa: E402
 import core_value as cv  # noqa: E402
 import industry_heat as ih  # noqa: E402

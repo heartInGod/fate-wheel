@@ -19,15 +19,15 @@
 新目录里的文件就是运行时真正读写的目标；目录需预先存在（随 git mv 建立）。
 
 命令行：
-  python3 datamul.py list    # 列出归档映射
-  python3 datamul.py check   # 检查每个登记文件是否已在归档位置、根目录是否还有残留
+  python3 main.py datamul list    # 列出归档映射
+  python3 main.py datamul check   # 检查每个登记文件是否已在归档位置、根目录是否还有残留
 """
 import os
 import sys
 
-# 既可被 `import datamul` 使用，也可直接 `python3 datamul.py` 运行：
-# datamul.py 位于项目根目录，自身所在目录即 ROOT。
-_ROOT = os.path.dirname(os.path.abspath(__file__))
+# 既可被 `import datamul` 使用，也可直接 `python3 common/datamul.py` 运行：
+# datamul.py 位于 <ROOT>/common/ 下，上溯两级即项目根目录。
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _ROOT not in sys.path:
     sys.path.insert(0, _ROOT)
 
@@ -104,7 +104,7 @@ def main(argv=None):
     if cmd == "list":
         _cmd_list()
         return 0
-    print(f"未知命令: {cmd}\n用法: datamul.py [list|check]", file=sys.stderr)
+    print(f"未知命令: {cmd}\n用法: main.py datamul [list|check]", file=sys.stderr)
     return 2
 
 

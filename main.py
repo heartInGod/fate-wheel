@@ -21,13 +21,18 @@
   python3 main.py test            运行全部单元测试
 
 子命令通过 runpy 以 __main__ 方式加载对应脚本，脚本原有入口逻辑零改动；
-数据路径由 paths.py 统一提供，与脚本所在目录无关。
+数据路径由 common/paths.py 统一提供，与脚本所在目录无关。
+
+根目录只保留本入口脚本；其余模块按职责位于 common/ core/ engine/ agent/ datasources/。
+数据文件归档校验：python3 main.py datamul check
 """
 import os
 import runpy
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# paths.py 已收进 common/，先让它可被找到；import 时它会自动 setup_sys_path()
+sys.path.insert(0, os.path.join(ROOT, "common"))
 sys.path.insert(0, ROOT)
 
 from paths import setup_sys_path
@@ -50,10 +55,11 @@ COMMANDS = {
     "evaluate":    ("engine/evaluate.py",      "收盘建议评估"),
     "record":      ("engine/record_signal.py", "信号采纳/否决/发送记录"),
     "record-op":   ("engine/record_op.py",     "实际成交记录"),
-    # 数据获取
-    "fetch":       ("fetch_data.py",           "统一数据获取入口"),
+    # 数据获取 / 归档工具
+    "fetch":       ("datasources/fetch_data.py", "统一数据获取入口"),
+    "datamul":     ("common/datamul.py",        "数据归档路径解析与校验"),
     # 持仓前提
-    "thesis":      ("thesis.py",               "维护持仓定位前提"),
+    "thesis":      ("core/thesis_cli.py",       "维护持仓定位前提"),
     # Agent 定时任务辅助
     "catchup":     ("agent/catchup.py",        "补齐错过的分析时段"),
     "snapshot":    ("agent/collect_snapshot.py", "计划时点行情快照归档"),

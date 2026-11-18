@@ -14,7 +14,7 @@
 | `data/derived/` | `rules_auto.json`、`core_auto.json` | 脚本生成的校准 / 复查产物 |
 | `data/watchlist/` | `watchlist.csv` | 自选股名单 |
 
-代码统一通过 `datamul.py` 的 `data_path(文件名)` 读写这些文件，读写路径自动一致；`cache/`、`logs/`、`profiles/`、`announcements/` 等运行时产物仍在原处。可用 `python3 datamul.py check` 校验归档完整性。
+代码统一通过 `datamul.py`（`common/datamul.py`）的 `data_path(文件名)` 读写这些文件，读写路径自动一致；`cache/`、`logs/`、`profiles/`、`announcements/` 等运行时产物仍在原处。可用 `python3 main.py datamul check` 校验归档完整性。
 
 ## 接口一览
 
