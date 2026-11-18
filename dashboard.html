@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>持仓看板 · fate_wheel</title>
+<link rel="stylesheet" href="web/style.css">
+</head>
+<body>
+<header class="topbar"><div class="wrap">
+  <div class="brand"><i></i>持仓看板</div>
+  <nav class="tabs" id="tabs">
+    <a href="#overview" data-tab="overview">持仓总览</a>
+    <a href="#stock" data-tab="stock">个股详情</a>
+    <a href="#watch" data-tab="watch">自选股</a>
+    <a href="#core" data-tab="core">长线 &amp; 政策</a>
+    <a href="#logs" data-tab="logs">分析日志</a>
+    <a href="#ops" data-tab="ops">操作日志</a>
+  </nav>
+  <div class="status"><span class="dot" id="dot"></span><span id="statusText">快照数据</span>
+    <button class="btn" id="btnRefresh" title="立即刷新实时行情">刷新</button>
+    <button class="btn" id="btnAuto" title="每 30 秒自动刷新">自动</button>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <div class="indices" id="indices"></div>
+  <div id="view"></div>
+  <div class="foot" id="foot"></div>
+</main>
+
+
+<!-- 看板数据：dashboard.js 注入 window.FW_DASHBOARD_DATA（script 加载，file:// 下无需服务）。
+     样式与逻辑已拆到 web/style.css、web/app.js。 -->
+<script src="data/derived/dashboard.js"></script>
+<script src="web/app.js"></script>
+</body>
+</html>
