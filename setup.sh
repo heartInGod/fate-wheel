@@ -1,19 +1,32 @@
 #!/bin/bash
 # fate_wheel 一键配置脚本（迁移到新电脑 / 新目录后运行）
+# 自动识别平台：macOS（Darwin）与 Linux / WSL。
+# 依赖安装按平台选包管理器（macOS: brew，Linux/WSL: apt-get）；
+# macOS 专属的休眠兜底（launchd + pmset）在其他平台自动跳过，改为提示手动补跑。
 #
 # 用法：
 #   ./setup.sh                    基础配置（检查环境、建目录、修正路径、安装 fate 命令、生成定时任务指令）
 #   ./setup.sh --check            另外跑一次盘中 snapshot + 生成看板，验证数据源可用
 #   ./setup.sh --test-feishu      另外给自己发一条飞书测试消息
 #   ./setup.sh --open-id ou_xxx   飞书接收人换成另一个 open_id（换了飞书应用时需要）
-#   ./setup.sh --install-deps     缺 python3 / node / lark-cli 时用 Homebrew、npm 自动安装
+#   ./setup.sh --install-deps     缺 python3 / node / lark-cli 时用系统包管理器自动安装
 #
-# 脚本可重复运行，已有的数据文件（holdings.csv、account.csv、operations.csv、logs/ 等）不会被覆盖。
+# 脚本可重复运行，已有的数据文件（data/portfolio/*.csv、logs/ 等）不会被覆盖。
 
 set -u
 PROJECT="$(cd "$(dirname "$0")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
 CHECK=0; TEST_FEISHU=0; INSTALL_DEPS=0; NEW_OPEN_ID=""
+
+# ---- 平台识别：macos / wsl / linux / unknown ----
+PLATFORM="unknown"
+case "$(uname -s)" in
+  Darwin) PLATFORM="macos" ;;
+  Linux)
+    if grep -qi microsoft /proc/version 2>/dev/null; then PLATFORM="wsl"
+    else PLATFORM="linux"; fi
+    ;;
+esac
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -21,7 +34,7 @@ while [ $# -gt 0 ]; do
     --test-feishu) TEST_FEISHU=1 ;;
     --install-deps) INSTALL_DEPS=1 ;;
     --open-id) NEW_OPEN_ID="${2:-}"; shift ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    -h|--help) awk 'NR>1 && /^set -u/{exit} NR>1' "$0"; exit 0 ;;
     *) echo "未知参数：$1"; exit 1 ;;
   esac
   shift
@@ -36,9 +49,20 @@ cd "$PROJECT" || exit 1
 echo "项目目录：$PROJECT"
 
 # ---------------------------------------------------------------- 1. 环境
-step "1. 检查运行环境"
+step "1. 检查运行环境（平台：$PLATFORM）"
 if ! command -v python3 >/dev/null 2>&1; then
-  if [ $INSTALL_DEPS = 1 ] && command -v brew >/dev/null 2>&1; then brew install python; fi
+  if [ $INSTALL_DEPS = 1 ]; then
+    case "$PLATFORM" in
+      macos) command -v brew >/dev/null 2>&1 && brew install python ;;
+      linux|wsl)
+        if command -v apt-get >/dev/null 2>&1; then
+          sudo apt-get update -qq && sudo apt-get install -y python3
+        else
+          echo "找不到 apt-get，请手动安装 python3" >&2
+        fi
+        ;;
+    esac
+  fi
 fi
 if command -v python3 >/dev/null 2>&1; then
   if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'; then
@@ -51,7 +75,18 @@ else
 fi
 
 if ! command -v lark-cli >/dev/null 2>&1 && [ $INSTALL_DEPS = 1 ]; then
-  command -v npm >/dev/null 2>&1 || { command -v brew >/dev/null 2>&1 && brew install node; }
+  if ! command -v npm >/dev/null 2>&1; then
+    case "$PLATFORM" in
+      macos) command -v brew >/dev/null 2>&1 && brew install node ;;
+      linux|wsl)
+        if command -v apt-get >/dev/null 2>&1; then
+          sudo apt-get update -qq && sudo apt-get install -y nodejs npm
+        else
+          echo "找不到 apt-get，请手动安装 nodejs/npm" >&2
+        fi
+        ;;
+    esac
+  fi
   command -v npm >/dev/null 2>&1 && npm install -g @larksuite/cli
 fi
 if command -v lark-cli >/dev/null 2>&1; then
@@ -67,17 +102,17 @@ fi
 
 # ---------------------------------------------------------------- 2. 目录与数据文件
 step "2. 目录与数据文件"
-for d in logs cache profiles data/announcements data/research; do mkdir -p "$d"; done
-ok "logs/ cache/ profiles/ data/announcements/ data/research/"
+for d in logs cache profiles data/portfolio data/announcements data/research; do mkdir -p "$d"; done
+ok "logs/ cache/ profiles/ data/portfolio/ data/announcements/ data/research/"
 
 BOM=$'\xEF\xBB\xBF'
 make_csv() {  # 文件不存在时写入带 BOM 的表头
   if [ -f "$1" ]; then ok "$1 已存在，保持不动"
   else printf '%s%s\n' "$BOM" "$2" > "$1"; warn "$1 不存在，已创建空表头，请填写：$2"; fi
 }
-make_csv holdings.csv   "名称,代码,市场,持仓数量,可用数量,成本价,币种,当前定位"
-make_csv account.csv    "更新日期,总资产,总市值,可用资金,浮动盈亏,仓位"
-make_csv operations.csv "日期,时间,操作,名称,代码,数量,价格,备注"
+make_csv data/portfolio/holdings.csv   "名称,代码,市场,持仓数量,可用数量,成本价,币种,当前定位"
+make_csv data/portfolio/account.csv    "更新日期,总资产,总市值,可用资金,浮动盈亏,仓位"
+make_csv data/portfolio/operations.csv "日期,时间,操作,名称,代码,数量,价格,备注"
 
 # ---------------------------------------------------------------- 3. 路径与飞书接收人
 step "3. 修正项目路径与飞书接收人"
@@ -127,6 +162,7 @@ cat > "$BIN_DIR/fate" <<EOF
 #!/bin/bash
 # fate wheel：刷新并在浏览器打开 fate_wheel 持仓看板（由 setup.sh 生成）
 PROJECT="$PROJECT"
+FATE_PLATFORM="$PLATFORM"
 EOF
 cat >> "$BIN_DIR/fate" <<'EOF'
 
@@ -142,15 +178,25 @@ USAGE
 
 PORT=8765
 open_board() {
-  if command -v open >/dev/null 2>&1; then
-    open "$PROJECT/dashboard.html"
-  elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$PROJECT/dashboard.html"
-  elif command -v wslview >/dev/null 2>&1; then
-    wslview "$PROJECT/dashboard.html"
-  else
-    echo "找不到打开浏览器的命令（open / xdg-open / wslview），请手动打开： $PROJECT/dashboard.html" >&2
+  local target="$PROJECT/dashboard.html"
+  case "$FATE_PLATFORM" in
+    macos)
+      if command -v open >/dev/null 2>&1; then open "$target"; return 0; fi
+      ;;
+    wsl)
+      # 交给 Windows 默认浏览器；WSL 里的 /usr/bin/open 不是浏览器命令，不能用
+      if command -v cmd.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+        local wt="$(wslpath -w "$target")"
+        cmd.exe /c start "" "$wt" >/dev/null 2>&1 && return 0
+      fi
+      ;;
+  esac
+  if [ "$FATE_PLATFORM" != "macos" ] && command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$target"; return 0
   fi
+  if command -v wslview >/dev/null 2>&1; then wslview "$target"; return 0; fi
+  echo "找不到打开浏览器的命令，请手动打开： $target" >&2
+  return 1
 }
 serve() {
   cd "$PROJECT" || exit 1
@@ -182,11 +228,21 @@ ok "$BIN_DIR/fate"
 case ":$PATH:" in
   *":$BIN_DIR:"*) ok "$BIN_DIR 已在 PATH 中" ;;
   *)
-    if grep -qs "$BIN_DIR" "$HOME/.zshenv"; then
-      ok "~/.zshenv 已包含 ${BIN_DIR}，新开终端生效"
+    configured=""
+    for f in "$HOME/.zshenv" "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile"; do
+      if [ -f "$f" ] && grep -q "$BIN_DIR" "$f"; then configured="$f"; break; fi
+    done
+    if [ -n "$configured" ]; then
+      ok "PATH 已在 $configured 中配置（新开终端生效）"
     else
-      echo "export PATH=\"$BIN_DIR:\$PATH\"" >> "$HOME/.zshenv"
-      ok "已把 $BIN_DIR 加入 ~/.zshenv，新开终端生效"
+      case "${SHELL:-}" in
+        */zsh)  target="$HOME/.zshrc" ;;
+        */bash) target="$HOME/.bashrc" ;;
+        *)      target="$HOME/.profile" ;;
+      esac
+      [ "$PLATFORM" = "macos" ] && target="$HOME/.zshenv"
+      printf '\nexport PATH="%s:$PATH"\n' "$BIN_DIR" >> "$target"
+      ok "已把 $BIN_DIR 加入 $target，新开终端生效"
     fi ;;
 esac
 
@@ -220,19 +276,14 @@ fi
 # ---------------------------------------------------------------- 6. 定时任务
 step "6. 定时任务（需在 MiniMax Code 中创建）"
 OUT="$PROJECT/setup/CRON_SETUP_PROMPT.md"
-python3 - "$PROJECT" > "$OUT" <<'PY'
+python3 - "$PROJECT" "$PLATFORM" > "$OUT" <<'PY'
 import json, sys
-project = sys.argv[1]
+project, platform = sys.argv[1], sys.argv[2]
 d = json.load(open(f"{project}/setup/crons.json", encoding="utf-8"))
 names = "、".join([t["cron_name"] for t in d["tasks"]] + d.get("legacy_cron_names", []))
-print(f"""请为持仓盯盘项目重建定时任务，项目目录：{project}
 
-1. 先用 cron_read(view=list) 查看现有任务；名称为下列之一的旧任务（{names}）先用 cron_delete 删除，避免重复运行。
-2. 读取 {project}/setup/crons.json，对 tasks 里的每一条调用 cron_create，参数逐字使用文件里的值：
-   cron_name、prompt、schedule、timezone、session、agent_name，并额外传 project="{project}"。prompt 不要改写或摘要。
-3. 创建完用 cron_read(view=list) 核对：共 {len(d['tasks'])} 条、project 都是 {project}、enabled=true，列出各任务下次运行时间。
-
-另外安装「休眠兜底」组件（重要）：MiniMax Code 的 cron 调度器跑在 GUI 进程里，机器合盖睡眠时到点的任务会被静默跳过且不补跑。请执行：
+if platform == "macos":
+    guard = f"""另外安装「休眠兜底」组件（重要）：MiniMax Code 的 cron 调度器跑在 GUI 进程里，机器合盖睡眠时到点的任务会被静默跳过且不补跑。请执行：
 
    cd {project} && ./setup/setup_sleep_guard.sh install
 
@@ -244,22 +295,51 @@ print(f"""请为持仓盯盘项目重建定时任务，项目目录：{project}
    cd {project} && ./setup/setup_sleep_guard.sh wake
 （唤醒点覆盖未来 30 天，到期要重跑 wake 续期；合盖且没接外接显示器时唤醒可能失效，补跑才是真正的兜底。）
 
-装完用 ./setup/setup_sleep_guard.sh status 确认：两个 agent 已加载，并列出定时唤醒情况。""")
+装完用 ./setup/setup_sleep_guard.sh status 确认：两个 agent 已加载，并列出定时唤醒情况。"""
+else:
+    guard = f"""当前平台为 {platform}：休眠兜底脚本 setup/setup_sleep_guard.sh 依赖 macOS 的 launchd / pmset，在此平台不可用，已跳过。
+MiniMax Code 的 cron 调度器在机器睡眠时到点的任务仍可能被静默跳过；若发现日志缺失，可手动补跑：
+
+   cd {project} && python3 main.py catchup --dry-run    # 只看缺哪些时段
+   cd {project} && python3 main.py catchup              # 补写 logs/yyyyMMdd.md
+   cd {project} && python3 main.py snapshot             # 补采当前时点行情快照
+
+建议在系统电源设置里避免机器在分析时段睡眠，以减少漏跑。"""
+
+print(f"""请为持仓盯盘项目重建定时任务，项目目录：{project}
+
+1. 先用 cron_read(view=list) 查看现有任务；名称为下列之一的旧任务（{names}）先用 cron_delete 删除，避免重复运行。
+2. 读取 {project}/setup/crons.json，对 tasks 里的每一条调用 cron_create，参数逐字使用文件里的值：
+   cron_name、prompt、schedule、timezone、session、agent_name，并额外传 project="{project}"。prompt 不要改写或摘要。
+3. 创建完用 cron_read(view=list) 核对：共 {len(d['tasks'])} 条、project 都是 {project}、enabled=true，列出各任务下次运行时间。
+
+{guard}""")
 PY
 ok "已生成 setup/CRON_SETUP_PROMPT.md"
-command -v pbcopy >/dev/null 2>&1 && pbcopy < "$OUT" && ok "指令已复制到剪贴板"
+if command -v pbcopy >/dev/null 2>&1; then
+  pbcopy < "$OUT" && ok "指令已复制到剪贴板"
+elif command -v clip.exe >/dev/null 2>&1; then
+  clip.exe < "$OUT" && ok "指令已复制到 Windows 剪贴板"
+elif command -v xclip >/dev/null 2>&1; then
+  xclip -selection clipboard < "$OUT" && ok "指令已复制到剪贴板（xclip）"
+fi
 echo "  → 在 MiniMax Code 里新建会话（工作目录选 ${PROJECT}），粘贴下面这段指令："
 echo "  ------------------------------------------------------------"
 sed 's/^/  /' "$OUT"
 echo "  ------------------------------------------------------------"
 
-step "7. 安装休眠兜底（定时采集 + 错过时段补跑）"
-if launchctl list 2>/dev/null | grep -q "com.fatewheel.catchup"; then
-  ok "已安装（com.fatewheel.collect / com.fatewheel.catchup）"
+step "7. 休眠兜底（仅 macOS 适用）"
+if [ "$PLATFORM" = "macos" ]; then
+  if launchctl list 2>/dev/null | grep -q "com.fatewheel.catchup"; then
+    ok "已安装（com.fatewheel.collect / com.fatewheel.catchup）"
+  else
+    warn "未安装。机器合盖睡眠时，MiniMax Code 的定时任务会被静默跳过且不补跑。"
+    echo "  → 执行 ./setup/setup_sleep_guard.sh install  安装（定时唤醒那步需要 sudo 输密码；之后每 30 天跑一次 ./setup/setup_sleep_guard.sh wake 续期）"
+    echo "  → 装完用 ./setup/setup_sleep_guard.sh status  查看状态"
+  fi
 else
-  warn "未安装。机器合盖睡眠时，MiniMax Code 的定时任务会被静默跳过且不补跑。"
-  echo "  → 执行 ./setup/setup_sleep_guard.sh install  安装（定时唤醒那步需要 sudo 输密码；之后每 30 天跑一次 ./setup/setup_sleep_guard.sh wake 续期）"
-  echo "  → 装完用 ./setup/setup_sleep_guard.sh status  查看状态"
+  ok "当前平台 $PLATFORM：macOS launchd / pmset 休眠兜底不适用，已跳过"
+  echo "  → 睡眠后若日志缺失，手动补跑：python3 main.py catchup、python3 main.py snapshot"
 fi
 
 step "完成"
