@@ -25,7 +25,7 @@ def snapshot(mode="intraday"):
     mode=intraday：盘中轻量（行情+技术位+实时资金流+板块资金+当日公告）。
     watchlist 为自选股（watchlist.csv）：行情一次批量拉取 + 技术位按天缓存；盘前另同步其公告（announcements_new）
     并把超过 7 天的资料档案刷新一次；盘中只看行情，不拉自选股公告。
-    两种模式都会同步 announcements/ 公告档案，announcements_new 为上次同步后新收录的公告。
+    两种模式都会同步 data/announcements/ 公告档案，announcements_new 为上次同步后新收录的公告。
     market_pulse 为宽基 ETF 同时刻量能（识别国家队护盘迹象，盘前即上一交易日全天）；
     盘前另有 market_pulse.shares：沪市宽基 ETF 份额日变化（净申购，收盘后公布，近 5 个交易日）。
     positions[].thesis 为定位前提（thesis.json：premises 带 status/age_days/stale，stale 列出需核实的前提 id，

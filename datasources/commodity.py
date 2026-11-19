@@ -5,7 +5,7 @@
   国内期货（主力连续）：新浪 InnerFuturesNewService 日 K + hq.sinajs.cn 实时价（日 K 只到上一交易日，当天用实时价补）
   外盘期货：新浪 GlobalFuturesService 日 K（含当天）
   BDI：东方财富数据中心 RPT_INDUSTRY_INDEX
-持仓关联哪些品种写在 thesis.json 每只标的的 commodities 字段（`python3 thesis.py link 代码 品种...`）。
+持仓关联哪些品种写在 thesis.json 每只标的的 commodities 字段（`python3 main.py thesis link 代码 品种...`）。
 输出统一为：最新值、日期、单位、1 日 / 1 周（7 天前）/ 1 月（30 天前）变化 %、近 30 天高低点、最近 6 个点。
 """
 import datetime
@@ -15,7 +15,7 @@ import re
 
 from ._http import DataSourceError, http_get, http_json, to_float
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from paths import ROOT
 CACHE = os.path.join(ROOT, "cache", "commodity.json")
 
 SINA_H = {"Referer": "https://finance.sina.com.cn/"}

@@ -9,9 +9,10 @@ import os
 
 from ._http import normalize, to_float
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HOLDINGS_CSV = os.path.join(ROOT, "holdings.csv")
-ACCOUNT_CSV = os.path.join(ROOT, "account.csv")
+from paths import ROOT
+from datamul import data_path
+HOLDINGS_CSV = data_path("holdings.csv")
+ACCOUNT_CSV = data_path("account.csv")
 
 
 def _read_csv(path):

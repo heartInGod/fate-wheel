@@ -1,0 +1,2 @@
+pip @ file:///build/pip-26.0.1-py3-none-any.whl#sha256=bdb1b08f4274833d62c1aa29e20907365a2ceb950410df15fc9521bad440122b
+setuptools @ file:///build/setuptools-82.0.1-py3-none-any.whl#sha256=a59e362652f08dcd477c78bb6e7bd9d80a7995bc73ce773050228a348ce2e5bb

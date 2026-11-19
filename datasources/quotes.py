@@ -112,7 +112,8 @@ def market_status():
 _KLINE_HOSTS = ("https://ifzq.gtimg.cn", "https://web.ifzq.gtimg.cn", "https://proxy.finance.qq.com/ifzqgtimg")
 
 
-KLINE_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "cache", "kline")
+from paths import ROOT
+KLINE_CACHE_DIR = os.path.join(ROOT, "cache", "kline")
 
 
 def _kline_cache_path(code):

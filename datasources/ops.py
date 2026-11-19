@@ -32,8 +32,9 @@ import datetime
 import os
 import re
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OPERATIONS_CSV = os.path.join(ROOT, "operations.csv")
+from paths import ROOT
+from datamul import data_path
+OPERATIONS_CSV = data_path("operations.csv")
 
 # T+0（当日买入即可卖）的市场类型：港股通、QDII ETF
 T0_MARKETS = ("港股通", "QDII")

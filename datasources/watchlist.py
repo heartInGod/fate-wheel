@@ -16,8 +16,9 @@ from concurrent.futures import ThreadPoolExecutor
 from . import quotes
 from ._http import normalize
 from .holdings import ROOT
+from datamul import data_path
 
-WATCHLIST_CSV = os.path.join(ROOT, "watchlist.csv")
+WATCHLIST_CSV = data_path("watchlist.csv")
 TECH_CACHE = os.path.join(ROOT, "cache", "watch_tech.json")
 
 ROW_KEYS = ("code", "name", "price", "pct", "change", "high", "low", "open", "prev_close", "volume_ratio",

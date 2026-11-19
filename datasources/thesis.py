@@ -21,8 +21,9 @@ import os
 
 from ._http import normalize
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-THESIS_JSON = os.path.join(ROOT, "thesis.json")
+from paths import ROOT
+from datamul import data_path
+THESIS_JSON = data_path("thesis.json")
 
 STATUSES = ("待核实", "成立", "存疑", "失效")
 DEFAULT_STALE = {"商品价格": 7, "行业": 14, "公司": 30, "宏观": 14, "default": 14}
