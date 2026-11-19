@@ -7,16 +7,17 @@
 # 用法：
 #   ./setup.sh                    基础配置（检查环境、建目录、修正路径、安装 fate 命令、生成定时任务指令）
 #   ./setup.sh --check            另外跑一次盘中 snapshot + 生成看板，验证数据源可用
-#   ./setup.sh --test-feishu      另外给自己发一条飞书测试消息
-#   ./setup.sh --open-id ou_xxx   飞书接收人换成另一个 open_id（换了飞书应用时需要）
-#   ./setup.sh --install-deps     缺 python3 / node / lark-cli 时用系统包管理器自动安装
+#   ./setup.sh --test-notify     另外给自己发一条通知测试消息（走当前配置的渠道）
+#   ./setup.sh --channel wechat  把通知渠道切成 wechat（默认）或 feishu
+#   ./setup.sh --open-id ou_xxx  飞书渠道的接收人 open_id（切到飞书时才需要）
+#   ./setup.sh --install-deps    缺 python3 / node / lark-cli 时用系统包管理器自动安装
 #
-# 脚本可重复运行，已有的数据文件（data/portfolio/*.csv、logs/ 等）不会被覆盖。
+# 脚本可重复运行，已有的数据文件（data/portfolio/*.csv、data/report/、logs/ 等）不会被覆盖。
 
 set -u
 PROJECT="$(cd "$(dirname "$0")" && pwd)"
 BIN_DIR="$HOME/.local/bin"
-CHECK=0; TEST_FEISHU=0; INSTALL_DEPS=0; NEW_OPEN_ID=""
+CHECK=0; TEST_NOTIFY=0; INSTALL_DEPS=0; NEW_OPEN_ID=""; NEW_CHANNEL=""
 
 # ---- 平台识别：macos / wsl / linux / unknown ----
 PLATFORM="unknown"
@@ -31,9 +32,10 @@ esac
 while [ $# -gt 0 ]; do
   case "$1" in
     --check) CHECK=1 ;;
-    --test-feishu) TEST_FEISHU=1 ;;
+    --test-notify|--test-feishu) TEST_NOTIFY=1 ;;   # --test-feishu 保留为兼容别名
     --install-deps) INSTALL_DEPS=1 ;;
     --open-id) NEW_OPEN_ID="${2:-}"; shift ;;
+    --channel) NEW_CHANNEL="${2:-}"; shift ;;
     -h|--help) awk 'NR>1 && /^set -u/{exit} NR>1' "$0"; exit 0 ;;
     *) echo "未知参数：$1"; exit 1 ;;
   esac
@@ -74,36 +76,30 @@ else
   fail "未找到 python3，请运行 brew install python（或加 --install-deps）"
 fi
 
-if ! command -v lark-cli >/dev/null 2>&1 && [ $INSTALL_DEPS = 1 ]; then
-  if ! command -v npm >/dev/null 2>&1; then
-    case "$PLATFORM" in
-      macos) command -v brew >/dev/null 2>&1 && brew install node ;;
-      linux|wsl)
-        if command -v apt-get >/dev/null 2>&1; then
-          sudo apt-get update -qq && sudo apt-get install -y nodejs npm
-        else
-          echo "找不到 apt-get，请手动安装 nodejs/npm" >&2
-        fi
-        ;;
-    esac
-  fi
-  command -v npm >/dev/null 2>&1 && npm install -g @larksuite/cli
-fi
+# 通知：默认走微信个人号桥接（纯 HTTP，无额外依赖）；lark-cli 仅飞书渠道需要。
 if command -v lark-cli >/dev/null 2>&1; then
-  ok "lark-cli $(lark-cli --version 2>/dev/null | awk '{print $NF}')"
+  ok "lark-cli 已安装（飞书渠道可用）"
   if lark-cli config show >/dev/null 2>&1; then
     ok "lark-cli 已配置飞书应用"
   else
-    warn "lark-cli 未配置飞书应用：运行 lark-cli config init（填 app-id / app-secret），机器人需开通 im:message 权限"
+    warn "lark-cli 未配置飞书应用（如需飞书渠道：lark-cli config init，机器人需 im:message 权限）"
   fi
 else
-  warn "未找到 lark-cli，飞书提醒不可用：npm install -g @larksuite/cli（或加 --install-deps）"
+  echo "  提示：默认通知渠道为微信个人号（无需 lark-cli）；需要飞书时再 npm install -g @larksuite/cli"
+fi
+if [ -f "$PROJECT/config/notify.json" ]; then
+  ok "通知配置 config/notify.json 已存在"
+else
+  if [ -f "$PROJECT/config/notify.example.json" ]; then
+    cp "$PROJECT/config/notify.example.json" "$PROJECT/config/notify.json"
+    ok "已从模板创建 config/notify.json（默认微信渠道，可按需修改）"
+  fi
 fi
 
 # ---------------------------------------------------------------- 2. 目录与数据文件
 step "2. 目录与数据文件"
-for d in logs cache profiles data/portfolio data/announcements data/research; do mkdir -p "$d"; done
-ok "logs/ cache/ profiles/ data/portfolio/ data/announcements/ data/research/"
+for d in logs cache profiles data/portfolio data/announcements data/research data/report; do mkdir -p "$d"; done
+ok "data/report/ logs/ cache/ profiles/ data/portfolio/ data/announcements/ data/research/"
 
 BOM=$'\xEF\xBB\xBF'
 make_csv() {  # 文件不存在时写入带 BOM 的表头
@@ -114,19 +110,19 @@ make_csv data/portfolio/holdings.csv   "名称,代码,市场,持仓数量,可用
 make_csv data/portfolio/account.csv    "更新日期,总资产,总市值,可用资金,浮动盈亏,仓位"
 make_csv data/portfolio/operations.csv "日期,时间,操作,名称,代码,数量,价格,备注"
 
-# ---------------------------------------------------------------- 3. 路径与飞书接收人
-step "3. 修正项目路径与飞书接收人"
+# ---------------------------------------------------------------- 3. 路径与通知配置
+step "3. 修正项目路径与通知配置"
 CRONS="$PROJECT/setup/crons.json"
 if [ ! -f "$CRONS" ]; then
   fail "缺少 setup/crons.json（定时任务定义），无法生成定时任务指令"
 else
-  python3 - "$PROJECT" "$NEW_OPEN_ID" <<'PY'
+  python3 - "$PROJECT" "$NEW_OPEN_ID" "$NEW_CHANNEL" <<'PY'
 import json, re, sys, pathlib
-project, new_id = sys.argv[1], sys.argv[2]
+project, new_id, new_channel = sys.argv[1], sys.argv[2], sys.argv[3]
 root = pathlib.Path(project)
 crons_p = root / "setup" / "crons.json"
 data = json.loads(crons_p.read_text("utf-8"))
-old_project, old_id = data["source_project"], data["feishu_open_id"]
+old_project = data["source_project"]
 rules_p = root / "intraday_rules.md"
 rules = rules_p.read_text("utf-8")
 # 规则文件里实际写的工作目录（以防和 crons.json 记录的不一致）
@@ -139,19 +135,27 @@ for op in old_paths:
         for t in data["tasks"]:
             t["prompt"] = t["prompt"].replace(op, project)
         changed.append(f"路径 {op} → {project}")
-if new_id and new_id != old_id:
-    rules = rules.replace(old_id, new_id)
-    for t in data["tasks"]:
-        t["prompt"] = t["prompt"].replace(old_id, new_id)
-    changed.append(f"飞书 open_id {old_id} → {new_id}")
-    data["feishu_open_id"] = new_id
 data["source_project"] = project
 rules_p.write_text(rules, "utf-8")
 crons_p.write_text(json.dumps(data, ensure_ascii=False, indent=2), "utf-8")
 for c in changed:
     print(f"  \033[32m✓\033[0m 已替换{c}（intraday_rules.md、setup/crons.json）")
 if not changed:
-    print(f"  \033[32m✓\033[0m 路径与 open_id 无需修改（{project}，{data['feishu_open_id']}）")
+    print(f"  \033[32m✓\033[0m 项目路径无需修改（{project}）")
+
+# 通知配置：渠道 / 飞书 open_id 都写到 config/notify.json（模板已在第 1 步复制）
+notify_p = root / "config" / "notify.json"
+if notify_p.exists():
+    n = json.loads(notify_p.read_text("utf-8"))
+    nchanged = []
+    if new_channel in ("wechat", "feishu") and n.get("channel") != new_channel:
+        n["channel"] = new_channel; nchanged.append(f"通知渠道 → {new_channel}")
+    if new_id and n.setdefault("feishu", {}).get("open_id") != new_id:
+        n["feishu"]["open_id"] = new_id; nchanged.append(f"飞书 open_id → {new_id}")
+    if nchanged:
+        notify_p.write_text(json.dumps(n, ensure_ascii=False, indent=2), "utf-8")
+        for c in nchanged:
+            print(f"  \033[32m✓\033[0m {c}（config/notify.json）")
 PY
 fi
 
@@ -263,13 +267,11 @@ if [ $CHECK = 1 ]; then
   fi
   python3 main.py dashboard >/dev/null 2>&1 && ok "看板数据 dashboard.json / dashboard.js 已生成（可直接打开根目录 dashboard.html 查看）" || fail "dashboard 数据生成失败"
 fi
-if [ $TEST_FEISHU = 1 ] && command -v lark-cli >/dev/null 2>&1; then
-  OID=$(python3 -c "import json;print(json.load(open('setup/crons.json'))['feishu_open_id'])")
-  if lark-cli im +messages-send --as bot --user-id "$OID" \
-      --markdown "fate_wheel 配置测试：$(hostname) 上的飞书提醒已打通。" >/dev/null 2>&1; then
-    ok "飞书测试消息已发送给 $OID"
+if [ $TEST_NOTIFY = 1 ]; then
+  if python3 main.py notify --test; then
+    ok "通知测试消息已按当前渠道发送（python3 main.py notify --status 可查看渠道）"
   else
-    fail "飞书测试消息发送失败：检查 lark-cli config show / auth status，以及机器人是否对该用户可用"
+    fail "通知测试发送失败：微信渠道请确认 Windows 桥接已启动；飞书渠道检查 lark-cli auth status"
   fi
 fi
 
@@ -327,7 +329,8 @@ print(f"""请在 WorkBuddy 里为持仓盯盘项目重建定时任务。
 ## 环境说明
 - 项目代码与数据在 WSL：`{d['wsl_project']}`；WorkBuddy 调度器在 Windows 侧，
   所以每条 prompt 都要求 agent 用 `wsl.exe -e bash -lc` 执行项目命令。
-- 飞书通知依赖 lark-cli（当前未安装）；未装时任务会在日志注明并跳过通知，不影响分析与记录。
+- 通知统一走 `python3 main.py notify`，渠道在 config/notify.json 配置（默认 wechat，走 Windows 侧微信个人号桥接）。
+  桥接未启动时任务会在日志注明并跳过通知，不影响分析与记录；详见 setup/wechat_bridge/README.md。
 - 时区：WorkBuddy RRULE 用系统本地时间（Asia/Shanghai），无需额外设置。""")
 PY
 ok "已生成 setup/WORKBUDDY_SETUP_PROMPT.md"

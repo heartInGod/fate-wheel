@@ -2,12 +2,12 @@
 """一次性生成 WorkBuddy 定时任务定义（setup/workbuddy/），从 setup/crons.json 派生。
 
 生成物：
-  setup/workbuddy/automations.json   9 条 automation 的机器可读定义
+  setup/workbuddy/automations.json   10 条 automation 的机器可读定义（盘前1 + 盘中7 + 评估1 + 周报1）
   setup/workbuddy/prompts/*.txt      每条任务适配后的完整 prompt
 
 适配要点（MiniMax Code → WorkBuddy）：
   1. 加统一「运行环境」头：项目路径、WSL 命令前缀、WebSearch 替代 web_search、
-     无 mavis/task_output、飞书降级说明。
+     无 mavis/task_output、通知降级说明。
   2. 删除任务5的第 5b 步（mavis 会话归档）及正文里对它的引用。
   3. 盘中任务加「时点判断」头：本条只负责特定分钟偏移的有效小时，
      其余时刻直接结束（WorkBuddy 最小调度粒度是每小时，无法表达"每10分钟"）。
@@ -33,9 +33,10 @@ ENV_HEAD = """【运行环境 · 必读】
   - 原 prompt 里的 `mavis` / `session` / `task_output` 是 MiniMax Code 专有工具，WorkBuddy 没有：
       · "task_output 等结果" → 直接等待命令跑完即可（命令是同步执行的）。
       · 会话归档相关步骤已删除，无需处理。
-  - 飞书：优先用 `lark-cli`（在 WSL 里执行）。若未安装或报 auth 错误，
-    不要反复重试，在当天日志注明「飞书未发送（lark-cli 不可用）」即可，任务其余部分照常完成。
-  - 下文出现的相对路径（logs/、data/、cache/ 等）都相对 {wsl}。
+  - 通知（微信/飞书）：统一用 `python3 main.py notify --text '...'`（长消息用 --file 或 --stdin），
+    渠道在 config/notify.json 的 channel 配置（默认 wechat）。不要自己拼 lark-cli 命令。
+    若发送失败，不要反复重试，在当天日志注明「通知未发送（原因）」即可，任务其余部分照常完成。
+  - 下文出现的相对路径（data/、data/report/、logs/、cache/ 等）都相对 {wsl}。
 
 """.format(wsl=WSL)
 
@@ -43,18 +44,19 @@ ENV_HEAD = """【运行环境 · 必读】
 # prompt 内判断当前小时是否在有效集合内（有效小时来自 crons.json 的原 schedule）。
 INTRADAY_GROUPS = [
     # (name, minute, 有效小时列表, 说明)
-    # 15:00 收盘并入 :00 组：intraday_rules.md 第 7 条本就是"15:00 写收盘小结"，
-    # 同一套规则，当小时=15 时按第 7 条执行即可，无需单独任务。
+    # 2026-11-19 调整：9 点只保留 9:45 一次（原 9:30/9:40/9:50 取消）。
+    # 15:00 收盘保留（并入 :00 组，按 intraday_rules.md 第 7 条写收盘小结）。
+    ("盘中分析 · 9点45分", 45, [9], ""),
     ("盘中分析 · 每整点(10/11/13/14/15点)", 0,  [10, 11, 13, 14, 15],
      "小时为 15 时按规则文件第 7 条写收盘小结；其余小时按普通盘中分析。"),
     ("盘中分析 · 每小时10分(10/11/13/14点)", 10, [10, 11, 13, 14], ""),
     ("盘中分析 · 每小时20分(10/11/13/14点)", 20, [10, 11, 13, 14], ""),
-    ("盘中分析 · 每小时30分(9/10/11/13/14点)", 30, [9, 10, 11, 13, 14], ""),
-    ("盘中分析 · 每小时40分(9/10/13/14点)", 40, [9, 10, 13, 14], ""),
-    ("盘中分析 · 每小时50分(9/10/13/14点)", 50, [9, 10, 13, 14], ""),
+    ("盘中分析 · 每小时30分(10/11/13/14点)", 30, [10, 11, 13, 14], ""),
+    ("盘中分析 · 每小时40分(10/13/14点)", 40, [10, 13, 14], ""),
+    ("盘中分析 · 每小时50分(10/13/14点)", 50, [10, 13, 14], ""),
 ]
 
-# 11 点的 4 个时点（00/10/20/30）与 15:00 收盘 —— 单独任务，因为规则段落不同
+# 11 点的 4 个时点（00/10/20/30）已被上面的组覆盖。
 SPECIAL_INTRADAY = [
     # 11 点整段: 0,10,20,30 —— 用 HOURLY 会混入其它小时，改为按分钟并入上面的组时需注意
 ]
@@ -107,12 +109,12 @@ def main():
         "prompt_file": "prompts/" + fn,
         "rrule": "FREQ=DAILY;BYHOUR=9;BYMINUTE=0",
         "status": "ACTIVE",
-        "description": "原每日9点持仓分析与飞书提醒；每天 09:00",
+        "description": "原每日9点持仓分析与通知提醒；每天 09:00",
     })
 
-    # ---- 2. 盘中 6 条（按分钟偏移）----
+    # ---- 2. 盘中 7 条（按分钟偏移）----
     # 取原盘中任务的正文（4 条内容基本一致，用第 2 条"10/13/14 点整段"做基底，
-    # 它覆盖的时点最多；9:30 与 11 点段的差异由时点判断头 + 正文里"读 intraday_rules.md"覆盖）
+    # 它覆盖的时点最多；9:45 与 11 点段的差异由时点判断头 + 正文里"读 intraday_rules.md"覆盖）
     base_intraday = tasks[2]["prompt"]
     base_intraday = base_intraday.replace("（这是 10/13/14 点整段那几次）", "")
     close_hint = (
@@ -164,7 +166,7 @@ def main():
         "prompt_file": "prompts/" + fn,
         "rrule": "FREQ=WEEKLY;BYDAY=FR;BYHOUR=17;BYMINUTE=0",
         "status": "ACTIVE",
-        "description": "原每周五长线仓复查与飞书周报；每周五 17:00",
+        "description": "原每周五长线仓复查与通知周报；每周五 17:00",
     })
 
     meta = {

@@ -2,7 +2,7 @@
   "_说明": "WorkBuddy 定时任务定义，由 setup/workbuddy/_generate.py 从 setup/crons.json 派生。setup.sh 安装时读取本文件，调用 WorkBuddy 的定时任务工具逐条创建/更新。prompt 全文在 prompts/ 目录，创建时读入。",
   "source_project": "/home/fox/projects/fate-wheel",
   "wsl_project": "/home/fox/projects/fate-wheel",
-  "automation_count": 9,
+  "automation_count": 10,
   "timezone": "Asia/Shanghai (系统本地时间，RRULE 不带时区字段)",
   "automations": [
     {
@@ -10,7 +10,14 @@
       "prompt_file": "prompts/premarket.txt",
       "rrule": "FREQ=DAILY;BYHOUR=9;BYMINUTE=0",
       "status": "ACTIVE",
-      "description": "原每日9点持仓分析与飞书提醒；每天 09:00"
+      "description": "原每日9点持仓分析与通知提醒；每天 09:00"
+    },
+    {
+      "name": "【fate-wheel】盘中分析 · 9点45分",
+      "prompt_file": "prompts/intraday_45.txt",
+      "rrule": "FREQ=HOURLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYMINUTE=45",
+      "status": "ACTIVE",
+      "description": "盘中分析，每小时 :45 触发，仅 [9] 点执行"
     },
     {
       "name": "【fate-wheel】盘中分析 · 每整点(10/11/13/14/15点)",
@@ -34,25 +41,25 @@
       "description": "盘中分析，每小时 :20 触发，仅 [10, 11, 13, 14] 点执行"
     },
     {
-      "name": "【fate-wheel】盘中分析 · 每小时30分(9/10/11/13/14点)",
+      "name": "【fate-wheel】盘中分析 · 每小时30分(10/11/13/14点)",
       "prompt_file": "prompts/intraday_30.txt",
       "rrule": "FREQ=HOURLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYMINUTE=30",
       "status": "ACTIVE",
-      "description": "盘中分析，每小时 :30 触发，仅 [9, 10, 11, 13, 14] 点执行"
+      "description": "盘中分析，每小时 :30 触发，仅 [10, 11, 13, 14] 点执行"
     },
     {
-      "name": "【fate-wheel】盘中分析 · 每小时40分(9/10/13/14点)",
+      "name": "【fate-wheel】盘中分析 · 每小时40分(10/13/14点)",
       "prompt_file": "prompts/intraday_40.txt",
       "rrule": "FREQ=HOURLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYMINUTE=40",
       "status": "ACTIVE",
-      "description": "盘中分析，每小时 :40 触发，仅 [9, 10, 13, 14] 点执行"
+      "description": "盘中分析，每小时 :40 触发，仅 [10, 13, 14] 点执行"
     },
     {
-      "name": "【fate-wheel】盘中分析 · 每小时50分(9/10/13/14点)",
+      "name": "【fate-wheel】盘中分析 · 每小时50分(10/13/14点)",
       "prompt_file": "prompts/intraday_50.txt",
       "rrule": "FREQ=HOURLY;INTERVAL=1;BYDAY=MO,TU,WE,TH,FR;BYMINUTE=50",
       "status": "ACTIVE",
-      "description": "盘中分析，每小时 :50 触发，仅 [9, 10, 13, 14] 点执行"
+      "description": "盘中分析，每小时 :50 触发，仅 [10, 13, 14] 点执行"
     },
     {
       "name": "【fate-wheel】收盘建议评估 16:00",
@@ -66,7 +73,7 @@
       "prompt_file": "prompts/weekly_1700.txt",
       "rrule": "FREQ=WEEKLY;BYDAY=FR;BYHOUR=17;BYMINUTE=0",
       "status": "ACTIVE",
-      "description": "原每周五长线仓复查与飞书周报；每周五 17:00"
+      "description": "原每周五长线仓复查与通知周报；每周五 17:00"
     }
   ]
 }
