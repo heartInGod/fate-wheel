@@ -27,9 +27,9 @@
    - 经验文档：已更新（新增 / 升级 / 降级 / 作废的条目编号，没有变化写“仅追加复盘段”）
    - 报告：data/report/eval/yyyyMMdd.md
    - 通知：已发送 / 发送失败（原因）
-3b. 更新经验文档 experience.md：先读全文，再严格按文件开头的「更新约定」操作——在「四、每日复盘」末尾追加当天一段（只追加），并维护「一、经验条目」（新增 / 观察→生效 / 补反例 / 作废，证据只用评估报告和行情数据，条目不超过 20 条）、「二、标的笔记」（关键价位与状态；「定位」栏只照抄 holdings.csv「当前定位」，不得自行改定位或写入基本面判断，基本面判断在 thesis.json）和「三、执行偏差」（只记偏离模式，不改变判断）。今天的复盘结论里，如果某条经验被验证或被推翻，要写明编号。
+3b. 更新经验文档：先读 data/experience/current.md 全文，再严格按文件开头的「更新约定」操作——写当天复盘文件 data/experience/YYYY-MM-DD.md（不存在则新建、存在则在末尾追加 - 16:00 补充；不改历史日期文件），并维护 current.md 的「一、经验条目」（新增 / 观察→生效 / 补反例 / 作废，证据只用评估报告和行情数据，条目不超过 20 条）、「二、标的笔记」（关键价位与状态；「定位」栏只照抄 holdings.csv「当前定位」，不得自行改定位或写入基本面判断，基本面判断在 thesis.json）和「三、执行偏差」（只记偏离模式，不改变判断）。今天的复盘结论里，如果某条经验被验证或被推翻，要写明编号。写完复盘后运行 python3 main.py experience cleanup 删除 30 天前的复盘文件（只删日期文件，不动 current.md）。
 4. 用机器人身份私聊张小凡（不超过 400 字）：
    python3 main.py notify --text $'...'（消息含单引号时用 --file 或 --stdin）
    标题【建议评估 MM-DD】；内容：胜负概况、最好/最差各一条、实际操作执行偏差（有操作时）、复盘结论、参数校准一句（明日市场状态、变化较大的参数、EV 偏弱的规则，取自摘要行）、参数建议（有则写）、经验文档变化（有新增 / 升级 / 降级时一句话）；末尾：仅供参考，不构成投资建议。发送失败在日志说明原因，不要反复重试。
 5. 运行 `python3 main.py dashboard` 刷新看板（失败在日志注明即可）。
-6. 只允许追加写 data/report/ 下的日志、由 evaluate.py 生成 data/report/eval/、由 calibrate.py 生成 rules_auto.json 和 data/report/calib/（不要手改 rules_auto.json）、由 build_dashboard.py 生成 dashboard.html、按「更新约定」维护 experience.md；禁止修改 holdings.csv、thesis.json（不得执行 thesis.py 的写入子命令）、account.csv、operations.csv、rules_params.json、intraday_rules.md 及所有 .py 脚本和 datasources/，禁止执行任何交易。
+6. 只允许追加写 data/report/ 下的日志、由 evaluate.py 生成 data/report/eval/、由 calibrate.py 生成 rules_auto.json 和 data/report/calib/（不要手改 rules_auto.json）、由 build_dashboard.py 生成 dashboard.html、按「更新约定」维护 data/experience/（当天复盘文件 + current.md）并运行 experience cleanup；禁止修改 holdings.csv、thesis.json（不得执行 thesis.py 的写入子命令）、account.csv、operations.csv、rules_params.json、intraday_rules.md 及所有 .py 脚本和 datasources/，禁止执行任何交易。

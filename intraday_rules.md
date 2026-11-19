@@ -28,7 +28,7 @@
    - 若整体报错，在当天日志追加一行 `## HH:MM 盘中分析` + `- 结论：数据接口报错（错误摘要）`，然后结束；若只是 `errors` 里个别接口失败，照常分析，在日志里注明缺了哪项数据。
    - 汇总里每只持仓含：实时行情、盈亏、`tech`（均线、近20/60日高低点等技术位）、`fund_flow_today`（当日资金流）、`announcements_today`（当日公告）、`announcements_new`（上次同步后新收录的公告，**重点看**）；另有 `indices` 指数、`etf_premium` ETF 溢价、`connect_flow` 南向资金、`sector_flow_in/out` 板块资金榜；`market_pulse` 宽基 ETF 量能、`policy_news` 近 35 分钟政策 / 国家队相关快讯（见下方「大盘脉搏」）；`watchlist` 为自选股（未持有，见下方「自选股」）的行情 + `tech`（前一交易日及以前的技术位）+ `focus` 关注要点。
    - 需要更多数据时单独调用接口，例如 `python3 main.py fetch stock_news keyword=旭光电子 n=5`、`python3 main.py fetch fund_flow_daily code=600353 days=5`；判断公告或新闻对公司影响有多大时，直接读本地资料档案 `profiles/{代码}.md`（主营构成、经营评述；ETF 为跟踪指数和前十大持仓，港股如 `profiles/0100.HK.md`），历史公告看 `data/announcements/{代码}.md`。
-2. 读取 `holdings.csv`（当前定位、持仓数量、成本价；行情脚本输出里每只持仓的 `thesis` 是定位前提（thesis.json，由 09:00 盘前核实）：**理由只能引用状态为「成立」的前提**，「存疑」「失效」或 stale（超期未核实）的前提不得用来否决低吸/加仓或支持高抛/减仓，前提必须双向使用；定位由 09:00 盘前按模型分析自动调整（`thesis.changed` 为近 3 天的调整记录），盘中按 holdings.csv 当前定位执行；盘中只读 thesis，不调用 thesis.py；每只持仓的 `commodity` 是关联商品价格（盘前缓存，钨价等日更品种当天下午才出新报价，盘中不联网刷新），只作前提背景参考，不单独触发信号；**行情脚本输出里的 `available` 已是按 T+1 推导后的今日可卖数量**，直接用它，不要再手工扣减冻结份额；行情脚本输出里还带 shares/cost/market_value/pnl/pnl_pct/stance/locked_today）、`account.csv`（总资产、可用资金）和当天日志 `data/report/yyyyMMdd.md`（了解盘前判断和今天已发出的提醒）；再读经验文档 `experience.md` 的「一、经验条目」「二、标的笔记」（历次复盘沉淀的经验与关键价位，第 4 步判断时逐条对照；「三、执行偏差」只用于改进提醒措辞，不得据此改变判断）。
+2. 读取 `holdings.csv`（当前定位、持仓数量、成本价；行情脚本输出里每只持仓的 `thesis` 是定位前提（thesis.json，由 09:00 盘前核实）：**理由只能引用状态为「成立」的前提**，「存疑」「失效」或 stale（超期未核实）的前提不得用来否决低吸/加仓或支持高抛/减仓，前提必须双向使用；定位由 09:00 盘前按模型分析自动调整（`thesis.changed` 为近 3 天的调整记录），盘中按 holdings.csv 当前定位执行；盘中只读 thesis，不调用 thesis.py；每只持仓的 `commodity` 是关联商品价格（盘前缓存，钨价等日更品种当天下午才出新报价，盘中不联网刷新），只作前提背景参考，不单独触发信号；**行情脚本输出里的 `available` 已是按 T+1 推导后的今日可卖数量**，直接用它，不要再手工扣减冻结份额；行情脚本输出里还带 shares/cost/market_value/pnl/pnl_pct/stance/locked_today）、`account.csv`（总资产、可用资金）和当天日志 `data/report/yyyyMMdd.md`（了解盘前判断和今天已发出的提醒）；再读经验文档 `data/experience/current.md` 的「一、经验条目」「二、标的笔记」（历次复盘沉淀的经验与关键价位，长期保留不滚动，第 4 步判断时逐条对照；「三、执行偏差」只用于改进提醒措辞，不得据此改变判断）。按天的复盘文件在 `data/experience/YYYY-MM-DD.md`，盘中无需读。
 3. **规则引擎先算候选**：运行 `python3 main.py signals`（读第 1 步刚生成的 `cache/snapshot_intraday.json`），输出 JSON：
    - `candidates`：本时点的规则候选（阈值按「动态阈值、EV 与仓位」一节随个股波动率和市场状态调整，已和今天的信号去重；数量已按 EV、单只仓位上限、现金底线和 `available` 算好）。每条有 `id`、`type`/`label`、`price`、`zone`（建议区间）、`qty`、`reason`、`metrics`（涨跌、振幅、距低点回升、技术位等）、`ev`（扣手续费后的期望收益：`ev_pct`、`ev_yuan`、`fee_yuan`、`win` 胜率、`n` 样本数、`regime` 市场状态）、`flags`（提醒，如“EV 依据不足，仅供参考”）。
    - `suppressed`：被屏蔽的候选（`blocked`=如 ETF 溢价超限不追；`group_suppressed`=二选一里较弱的一只；`ev_negative`=扣手续费后 EV ≤ 0、单笔 EV 低于 20 元门槛，或该标的仓位已到上限 / 现金不足 / 交易仓已到预算上限；`blocked` 还包括买入类「上方 20/60 日高点距现价不足 3% 目标价差」；`capped`=自选股本时点超过 3 条的部分，未记录，下个时点仍满足会再出现），只作参考，不提醒。
@@ -53,7 +53,7 @@
    - **大盘脉搏**：每次先看引擎输出的 `market_pulse`，再逐条判断，详见下方「大盘脉搏」。
    - 不要根据张小凡的实际操作（如当天加仓/减仓、可用数量变化）去推测或修改判断，也不要因成本价高低（是否亏损）改变结论（长线仓的分区买卖例外，见「两仓制」持仓成本约束）；持仓数量、可用数量和可用资金只用来确定股数或金额。**候选的 `qty` 是引擎按 EV、仓位上限（单只 ≤ 总资产 20%）、可用现金和交易仓预算（交易仓市值 ≤ 总资产 20%）算出的上限：可以减少，不能超过**（加大数量要另有理由并写进 note，且仍不得突破这些约束）。卖出数量不得超过 `available`；`available_derived` 为 false 时在日志注明「可用数量未推导，按 CSV 原值」。
    - 固定阈值、上下限和仓位约束（`rules_params.json`）由张小凡调整；动态阈值文件 `rules_auto.json` 由 16:00 任务运行 `calibrate.py` 生成。盘中任务两个都不要修改。可以参考 `data/report/eval/summary.md` 里各信号类型的历史胜率，对胜率偏低的类型从严判断。
-   - **经验文档**：候选命中 `experience.md` 里某条「生效」经验时按经验处理，「观察」经验作为从严参考；采纳或否决的 note 里写上依据的编号（如「按 E1 否决：当日跌 -4.3% 创 20 日新低」）。确实要违反某条经验时，在 note 和日志里写明理由。
+   - **经验文档**：候选命中 `data/experience/current.md` 里某条「生效」经验时按经验处理，「观察」经验作为从严参考；采纳或否决的 note 里写上依据的编号（如「按 E1 否决：当日跌 -4.3% 创 20 日新低」）。确实要违反某条经验时，在 note 和日志里写明理由。
 5. **发送**：采纳的候选 + 补充的信号就是本次「新信号」。有新信号时，用机器人身份私聊张小凡：
    ```
    python3 main.py notify --text $'...'（消息含单引号时用 --file 或 --stdin）
@@ -69,7 +69,7 @@
 6. 无论有无信号，都按「日志约定」把本次结论追加到当天日志；无新信号时不发通知消息。可用 `python3 main.py record list` 核对本时点各信号的状态。
 7. 15:00 那一次运行：在日志里追加收盘小结（各持仓收盘价与涨跌幅、今日提醒回顾——做T逐条写反向腿是否到价、自选股提醒写收盘价相对建仓区间、明日关注点）；若今天发过提醒，再把简短收盘小结发一条通知。建议的对错由 16:00 的收盘评估任务（`evaluate.py`）统一打分，这里不用自评。
 8. 写完日志（并完成通知）后运行 `python3 main.py dashboard` 刷新看板数据 `data/derived/dashboard.json` 与 `data/derived/dashboard.js`（失败不影响本次任务，日志里注明即可；根目录 `dashboard.html` 通过 `<script src>` 加载 JS，双击即可查看）。
-9. 只允许追加写 `logs/` 下的日志文件、通过 `signals_engine.py` / `record_signal.py` 写 `data/report/signals/`，以及由 `build_dashboard.py` 重新生成 `data/derived/dashboard.json` / `dashboard.js`；`profiles/`、`data/announcements/` 由 snapshot 脚本自动维护，不要手动编辑；禁止修改 holdings.csv、watchlist.csv、account.csv、operations.csv、rules_params.json、rules_auto.json、experience.md（由 16:00 复盘任务维护）、calibrate.py、auto_params.py、fees.py、fetch_data.py、datasources/、signals_engine.py、signal_store.py、record_signal.py、evaluate.py、build_dashboard.py、`dashboard.html`、`web/style.css`、`web/app.js` 和本规则文件，禁止执行任何交易。
+9. 只允许追加写 `logs/` 下的日志文件、通过 `signals_engine.py` / `record_signal.py` 写 `data/report/signals/`，以及由 `build_dashboard.py` 重新生成 `data/derived/dashboard.json` / `dashboard.js`；`profiles/`、`data/announcements/` 由 snapshot 脚本自动维护，不要手动编辑；禁止修改 holdings.csv、watchlist.csv、account.csv、operations.csv、rules_params.json、rules_auto.json、data/experience/current.md 与各日期复盘文件（由 16:00 复盘任务维护）、calibrate.py、auto_params.py、fees.py、fetch_data.py、datasources/、signals_engine.py、signal_store.py、record_signal.py、evaluate.py、build_dashboard.py、`dashboard.html`、`web/style.css`、`web/app.js` 和本规则文件，禁止执行任何交易。
 
 ## 长线风险执行闭环
 

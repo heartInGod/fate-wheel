@@ -27,9 +27,10 @@ SNAP_DIR = os.path.join(CACHE, "snapshots")
 FETCH = os.path.join(ROOT, "main.py")
 
 # 计划时点：(HH:MM, mode)。与 crons.json / intraday_rules.md 保持一致。
+# 2026-11-19 调整：9 点只保留 09:45 一次（原 09:30/09:40/09:50 取消）；15:00 收盘保留。
 SLOTS = [
     ("09:00", "premarket"),
-    ("09:30", "intraday"), ("09:40", "intraday"), ("09:50", "intraday"),
+    ("09:45", "intraday"),
     ("10:00", "intraday"), ("10:10", "intraday"), ("10:20", "intraday"), ("10:30", "intraday"), ("10:40", "intraday"), ("10:50", "intraday"),
     ("11:00", "intraday"), ("11:10", "intraday"), ("11:20", "intraday"), ("11:30", "intraday"),
     ("13:00", "intraday"), ("13:10", "intraday"), ("13:20", "intraday"), ("13:30", "intraday"), ("13:40", "intraday"), ("13:50", "intraday"),
@@ -44,7 +45,7 @@ def match_slot(cur):
     for s, m in SLOTS:
         hh, mm = s.split(":")
         diff = (int(hh) * 60 + int(mm)) - cur      # >0 表示时点还没到
-        if -30 <= diff <= 2:                         # 时点间隔 10 分钟，「即将到来」只认 2 分钟内
+        if -30 <= diff <= 2:                         # 时点临近才认（通常间隔 10 分钟，9:45 与 10:00 间隔 15 分钟）
             key = (0 if diff >= 0 else 1, abs(diff))  # 即将到来的优先
             if best is None or key < best[0]:
                 best = (key, s, m)

@@ -10,7 +10,7 @@
 
 判定依据
 --------
-* 计划时点表与 crons.json 一致（09:00 盘前，11-11 前为 08:00；盘中每 10 分钟）。
+* 计划时点表与 crons.json 一致（09:00 盘前；9 点仅 09:45 一次；其余盘中每 10 分钟，含 15:00 收盘）。
 * 当天日志里已有的 `## HH:MM` 段落视为已覆盖。
 * 时点过后 GRACE_MIN 分钟内不判缺失：cron 任务正在跑、还没写日志，此时补写会和正式段落重复。
 * 采集快照 cache/snapshots/{yyyyMMdd}_{HHMM}.json 提供该时点的行情数据；
@@ -37,9 +37,10 @@ LOG_DIR = os.path.join(ROOT, "data", "report")
 SNAP_DIR = os.path.join(ROOT, "cache", "snapshots")
 
 # (时点, 类型)：premarket=盘前，intraday=盘中
+# 2026-11-19 调整：9 点只保留 09:45 一次（原 09:30/09:40/09:50 取消）；15:00 收盘保留。
 SLOTS = [
     ("09:00", "premarket"),
-    ("09:30", "intraday"), ("09:40", "intraday"), ("09:50", "intraday"),
+    ("09:45", "intraday"),
     ("10:00", "intraday"), ("10:10", "intraday"), ("10:20", "intraday"), ("10:30", "intraday"), ("10:40", "intraday"), ("10:50", "intraday"),
     ("11:00", "intraday"), ("11:10", "intraday"), ("11:20", "intraday"), ("11:30", "intraday"),
     ("13:00", "intraday"), ("13:10", "intraday"), ("13:20", "intraday"), ("13:30", "intraday"), ("13:40", "intraday"), ("13:50", "intraday"),

@@ -26,6 +26,7 @@
 根目录只保留本入口脚本；其余模块按职责位于 src/{common,core,engine,agent,datasources,research}/，
 测试位于 src/tests/，前端资源位于 web/。
 数据文件归档校验：python3 main.py datamul check
+经验文档（data/experience/）：python3 main.py experience list|current|path|cleanup
 """
 import os
 import runpy
@@ -61,6 +62,7 @@ COMMANDS = {
     # 数据获取 / 归档工具
     "fetch":       ("src/datasources/fetch_data.py", "统一数据获取入口"),
     "datamul":     ("src/common/datamul.py",        "数据归档路径解析与校验"),
+    "experience":  ("src/common/experience_store.py", "经验文档路径与30天滚动清理"),
     # 持仓前提
     "thesis":      ("src/core/thesis_cli.py",       "维护持仓定位前提"),
     # Agent 定时任务辅助

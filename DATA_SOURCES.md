@@ -146,7 +146,7 @@ available(今天) = shares(今天) − locked(今天)
 
 港股历史日只有日 K（报告标 ≈）；A 股历史日用 5 分钟 K（约 6 个交易日内）。每天运行会刷新近 8 个交易日的 T+1/T+3/T+5。
 
-定时任务：16:00 收盘评估任务运行 `evaluate.py`，写复盘、发飞书简报，并更新经验文档 `experience.md`（追加当日复盘段、维护经验条目 / 标的笔记 / 执行偏差），最后归档当天本项目的定时任务会话（purpose 为 `cron:main:*`，手动会话不动；非交易日也会执行归档）；09:00 盘前任务读取上一交易日的评估报告、summary 和 `experience.md` 做复盘（16:00 漏跑时由 09:00 盘前补写经验文档的复盘段），盘中任务每次分析前读 `experience.md` 的经验条目与标的笔记。16:00 任务还运行 `calibrate.py` 更新次日的动态阈值并在飞书简报里报告参数变化。每周五 17:00 的长线复查任务运行 `core_value.py review`，更新 `core_auto.json`（持仓分仓、目标价、分区）并发飞书周报；09:00 盘前任务通过 `signals_engine.py --mode premarket` 的 `core` 段读取长线仓分区，长线持仓出财报/重大公告时也会补跑 review。机器休眠漏跑时，catchup 会在 16:10 之后补跑 evaluate 和 calibrate（不发飞书）；盘中补跑的时段也会用引擎回放候选（source=catchup）。
+定时任务：16:00 收盘评估任务运行 `evaluate.py`，写复盘、发飞书简报，并更新经验文档（写当天复盘文件 `data/experience/YYYY-MM-DD.md`、维护活状态 `data/experience/current.md` 的经验条目 / 标的笔记 / 执行偏差，再运行 `python3 main.py experience cleanup` 滚动保留最近 30 天复盘文件），最后归档当天本项目的定时任务会话（purpose 为 `cron:main:*`，手动会话不动；非交易日也会执行归档）；09:00 盘前任务读取上一交易日的评估报告、summary 和 `data/experience/current.md` 做复盘（16:00 漏跑时由 09:00 盘前补写当天复盘文件 `data/experience/YYYY-MM-DD.md`），盘中任务每次分析前读 `data/experience/current.md` 的经验条目与标的笔记。复盘文件按天存 `data/experience/`，滚动保留 30 天。16:00 任务还运行 `calibrate.py` 更新次日的动态阈值并在飞书简报里报告参数变化。每周五 17:00 的长线复查任务运行 `core_value.py review`，更新 `core_auto.json`（持仓分仓、目标价、分区）并发飞书周报；09:00 盘前任务通过 `signals_engine.py --mode premarket` 的 `core` 段读取长线仓分区，长线持仓出财报/重大公告时也会补跑 review。机器休眠漏跑时，catchup 会在 16:10 之后补跑 evaluate 和 calibrate（不发飞书）；盘中补跑的时段也会用引擎回放候选（source=catchup）。
 
 ```bash
 python3 main.py signals --no-record                     # 看当前快照会出哪些候选（不记录）
