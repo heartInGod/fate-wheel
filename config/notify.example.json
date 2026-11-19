@@ -1,0 +1,14 @@
+{
+  "_说明": "fate-wheel 统一通知配置。channel=wechat 走本地微信个人号桥接；channel=feishu 走 lark-cli。修改后立即生效，无需改 prompt。",
+  "channel": "wechat",
+  "wechat": {
+    "_桥接说明": "bridge_url 指向 Windows 侧微信桥接服务（见 setup/wechat_bridge/README.md）。WSL 下若 127.0.0.1 不通，改用 Windows 主机 IP（见 README）。",
+    "bridge_url": "http://127.0.0.1:8766/send",
+    "token": "",
+    "timeout": 5
+  },
+  "feishu": {
+    "cli": "lark-cli",
+    "open_id": "ou_74cb2eabb4fa492385997acb37b008d6"
+  }
+}

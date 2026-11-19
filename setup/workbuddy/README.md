@@ -45,8 +45,9 @@
 
 ## 已知限制
 
-- **飞书通知**：依赖 `lark-cli`，当前 WSL 环境未安装。任务会照常分析、记录、写日志，只在日志里注明
-  「飞书未发送（lark-cli 不可用）」。装好后自动恢复：`npm install -g @larksuite/cli` + `lark-cli config init`。
+- **通知**：统一走 `python3 main.py notify`，渠道在 `config/notify.json`（默认 `wechat`，走 Windows 侧微信个人号桥接，
+  见 `setup/wechat_bridge/README.md`）。桥接未启动时任务会照常分析、记录、写日志，只在日志里注明
+  「通知未发送（原因）」。切飞书：`./setup.sh --channel feishu` + `lark-cli config init`。
 - **睡眠漏跑**：WorkBuddy 也是 GUI 调度器，机器合盖深睡时到点任务会被跳过。macOS 上可用
   `setup/setup_sleep_guard.sh` 装 launchd 兜底（采集快照 + 补写日志）；其它平台发现日志缺失时手动
   `python3 main.py catchup`、`python3 main.py snapshot` 补跑。

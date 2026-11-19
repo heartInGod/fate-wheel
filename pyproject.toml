@@ -1,0 +1,15 @@
+[project]
+name = "fate-wheel"
+version = "0.1.0"
+description = "A股/港股持仓分析与信号提醒系统"
+readme = "README.md"
+authors = [
+    { name = "godtime", email = "765743536@qq.com" }
+]
+requires-python = ">=3.11"
+dependencies = []
+
+# 本项目以 `python3 main.py` 运行，代码在 src/ 下按职责分子包，不作为可安装包分发。
+# package=false 让 uv 只管理 Python 版本/依赖，不尝试 build src/fate_wheel。
+[tool.uv]
+package = false

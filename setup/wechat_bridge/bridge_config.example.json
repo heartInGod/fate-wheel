@@ -1,0 +1,11 @@
+{
+  "_说明": "复制为 bridge_config.json 后修改。token 与 notify.json 的 wechat.token 保持一致可防止被局域网误调用。",
+  "host": "0.0.0.0",
+  "port": 8766,
+  "token": "",
+  "sender": {
+    "_type说明": "file=只落盘验证链路（默认）；command=执行外部命令,{text} 占位；module=调用 Python 模块的 send(text)",
+    "type": "file",
+    "path": "outbox.txt"
+  }
+}

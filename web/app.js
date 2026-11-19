@@ -370,7 +370,7 @@ function stockView(code){
     ${a.category&&a.category!=='-'?`<span class="tag">${esc(a.category.length>18?a.category.slice(0,18)+'…':a.category)}</span>`:''}${(a.seen||'').slice(0,10)===today&&(a.date||'').slice(0,10)>=today?'<span class="tag new">今日</span>':''}</span><span class="small muted">${esc(a.source)}</span></li>`).join('')}</ul>`:'<div class="empty">近 90 天没有公告</div>';
   const related=[];D.logs.forEach(day=>day.sections.forEach(sec=>{if(sec.body.includes(s.name)||sec.body.includes(s.key)){
     const lines=sec.body.split('\n').filter(l=>l.includes(s.name)||l.includes(s.key)).slice(0,3);related.push({date:day.date,sec,lines})}}));
-  const relHtml=related.length?related.slice(0,12).map(r=>`<div class="tl ${r.sec.feishu.startsWith('已发送')?'sent':''}"><div class="h">${r.date} ${r.sec.time} · ${esc(r.sec.title)}</div><div class="md">${md(r.lines.join('\n'))}</div></div>`).join(''):'<div class="empty">分析日志里还没有提到这只标的</div>';
+  const relHtml=related.length?related.slice(0,12).map(r=>`<div class="tl ${nstat(r.sec).startsWith('已发送')?'sent':''}"><div class="h">${r.date} ${r.sec.time} · ${esc(r.sec.title)}</div><div class="md">${md(r.lines.join('\n'))}</div></div>`).join(''):'<div class="empty">分析日志里还没有提到这只标的</div>';
   $('#view').innerHTML=`<div class="stock-layout"><nav class="card picker">${picker}</nav><div class="grid" style="align-content:start">
     <div class="card"><div class="sh"><div><div class="t">${esc(s.name)} <span class="muted small num">${esc(s.key)}</span>${s.currency==='HKD'?'<span class="tag hk">港股</span>':''}${s.snap&&s.snap.is_etf?'<span class="tag etf">ETF</span>':''}${grpTag(sg)}</div>
       <div class="small muted">${esc(s.type||'')} · 行情时间 ${esc(q.time||'')}</div></div>
@@ -395,16 +395,17 @@ function stockView(code){
 /* ---------- logs ---------- */
 const LF={kind:'all'};
 function logsView(date){
-  if(!D.logs.length){$('#view').innerHTML=`<div class="card section empty"><b>还没有分析日志</b>定时任务每天 8:00 盘前、交易时段每 10 分钟运行一次，结论会写入 logs/yyyyMMdd.md，重新生成看板后显示在这里。</div>`;return}
+  if(!D.logs.length){$('#view').innerHTML=`<div class="card section empty"><b>还没有分析日志</b>定时任务每天 8:00 盘前、交易时段每 10 分钟运行一次，结论会写入 data/report/yyyyMMdd.md，重新生成看板后显示在这里。</div>`;return}
   const day=D.logs.find(x=>x.date===date)||D.logs[0];
-  const nav=D.logs.map(x=>{const n=x.sections.reduce((a,s)=>a+s.signals.length,0),sent=x.sections.filter(s=>s.feishu.startsWith('已发送')).length;
+  const nav=D.logs.map(x=>{const n=x.sections.reduce((a,s)=>a+s.signals.length,0),sent=x.sections.filter(s=>nstat(s).startsWith('已发送')).length;
     return `<a href="#logs/${x.date}" class="${x.date===day.date?'on':''}"><span>${x.date}</span><span class="small muted">${x.sections.length} 次${sent?` · <span class="up">提醒${sent}</span>`:''}</span></a>`}).join('');
   const kinds=[['all','全部'],['premarket','盘前'],['intraday','盘中'],['close','收盘'],['signal','仅有信号']];
   const secs=day.sections.filter(s=>LF.kind==='all'||(LF.kind==='signal'?s.signals.length:s.kind===LF.kind));
-  const fs=f=>!f?'':f.startsWith('已发送')?'<span class="tag new">飞书已发送</span>':f.startsWith('发送失败')?'<span class="tag warn">飞书发送失败</span>':'<span class="tag">未发送</span>';
-  const body=secs.length?secs.map(s=>`<div class="sec kind-${s.kind}"><div class="sec-h"><span class="tm">${s.time}</span><span class="ti">${esc(s.title)}</span><span class="r">${s.signals.length?`<span class="tag warn">${s.signals.length} 条信号</span>`:''}${fs(s.feishu)}</span></div><div class="sec-b md">${md(s.body)}</div></div>`).join(''):'<div class="empty">该筛选条件下没有记录</div>';
+  const nstat=x=>(x&&(x.notify||x.feishu))||'';  // 兼容新旧字段名
+  const fs=f=>!f?'':f.startsWith('已发送')?'<span class="tag new">通知已发送</span>':f.startsWith('发送失败')?'<span class="tag warn">通知发送失败</span>':'<span class="tag">未发送</span>';
+  const body=secs.length?secs.map(s=>`<div class="sec kind-${s.kind}"><div class="sec-h"><span class="tm">${s.time}</span><span class="ti">${esc(s.title)}</span><span class="r">${s.signals.length?`<span class="tag warn">${s.signals.length} 条信号</span>`:''}${fs(nstat(s))}</span></div><div class="sec-b md">${md(s.body)}</div></div>`).join(''):'<div class="empty">该筛选条件下没有记录</div>';
   $('#view').innerHTML=`<div class="log-layout"><nav class="card picker">${nav}</nav><div>
-    <div class="card"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">${day.date} 分析日志</h3><span class="small muted">logs/${day.date.replace(/-/g,'')}.md · ${day.sections.length} 次分析</span></div>
+    <div class="card"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px"><h3 style="margin:0">${day.date} 分析日志</h3><span class="small muted">data/report/${day.date.replace(/-/g,'')}.md · ${day.sections.length} 次分析</span></div>
     <div class="filters">${kinds.map(([k,l])=>`<button class="btn ${LF.kind===k?'on':''}" data-kind="${k}">${l}</button>`).join('')}</div>${body}
     <details class="fold"><summary>查看日志原文</summary><pre style="white-space:pre-wrap;font-size:12px;background:var(--soft);padding:12px;border-radius:8px">${esc(day.markdown)}</pre></details></div></div></div>`;
   document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{LF.kind=b.dataset.kind;logsView(day.date)});
@@ -414,15 +415,15 @@ function logsView(date){
 function opsView(){
   const al=D.alerts,ops=D.operations;
   const kindName={premarket:'盘前',intraday:'盘中',close:'收盘'};
-  const alHtml=al.length?`<div class="timeline">${al.map(a=>`<div class="tl ${a.feishu.startsWith('已发送')?'sent':''}"><div class="h"><b class="num">${a.date} ${a.time}</b> · ${kindName[a.kind]||''} · ${a.feishu?esc(a.feishu):'飞书状态未记录'}</div>${a.signals.map(x=>`<div class="sig">${inline(x)}</div>`).join('')}</div>`).join('')}</div>`
+  const alHtml=al.length?`<div class="timeline">${al.map(a=>`<div class="tl ${nstat(a).startsWith('已发送')?'sent':''}"><div class="h"><b class="num">${a.date} ${a.time}</b> · ${kindName[a.kind]||''} · ${nstat(a)?esc(nstat(a)):'通知状态未记录'}</div>${a.signals.map(x=>`<div class="sig">${inline(x)}</div>`).join('')}</div>`).join('')}</div>`
     :'<div class="empty"><b>暂无操作建议</b>分析日志中出现「信号」或「建议」时会自动汇总到这里。</div>';
   const cols=ops.length?Object.keys(ops[0]):['日期','时间','操作','名称','代码','数量','价格','备注'];
   const opHtml=ops.length?`<div class="tbl-wrap"><table><thead><tr>${cols.map(c=>`<th class="${/数量|价格|金额/.test(c)?'':'l'}">${esc(c)}</th>`).join('')}</tr></thead><tbody>${ops.map(r=>`<tr>${cols.map(c=>{const v=r[c]||'';const buy=/买|加/.test(v),sell=/卖|减|清/.test(v);
       return `<td class="${/数量|价格|金额/.test(c)?'num':'l'} ${c==='操作'?(buy?'up':sell?'down':''):''}">${esc(v)}</td>`}).join('')}</tr>`).join('')}</tbody></table></div>`
     :`<div class="empty"><b>暂无成交记录</b>在 operations.csv 中按「日期,时间,操作,名称,代码,数量,价格,备注」每笔一行记录实际成交（如：2026-10-30,10:15,卖出,旭光电子,600353,500,21.30,减仓），重新生成看板后显示。</div>`;
-  const sent=al.filter(a=>a.feishu.startsWith('已发送')).length;
+  const sent=al.filter(a=>nstat(a).startsWith('已发送')).length;
   $('#view').innerHTML=`<div class="grid two section">
-    <div class="card"><h3>操作建议与提醒 <span class="hint">从分析日志提取 · 共 ${al.length} 次，飞书已发送 ${sent} 次</span></h3>${alHtml}</div>
+    <div class="card"><h3>操作建议与提醒 <span class="hint">从分析日志提取 · 共 ${al.length} 次，通知已发送 ${sent} 次</span></h3>${alHtml}</div>
     <div class="card"><h3>实际成交记录 <span class="hint">operations.csv · ${ops.length} 笔</span></h3>${opHtml}</div></div>`;
 }
 
@@ -458,7 +459,7 @@ function watchView(){
   const annHtml=anns.length?`<ul class="list">${anns.slice(0,20).map(({w,a})=>`<li><span class="d">${esc((a.date||'').slice(5,16))}</span><span><b style="font-weight:600">${esc(w.name)}</b> · <a href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a></span></li>`).join('')}</ul>`:'<div class="empty">近 30 天没有公告</div>';
   const src=[...new Set(W.map(w=>w.source).filter(Boolean))].join('、');
   $('#view').innerHTML=`<div class="card section" style="padding:0"><div style="padding:16px 18px 4px"><h3>自选股 <span class="hint">${W.length} 只 · ${esc(src)} · 只找买点（👀自选低吸 / 👀自选突破），技术位为前一交易日及以前</span></h3></div>${tbl}</div>
-    <div class="grid two section"><div class="card"><h3>自选股信号 <span class="hint">近 10 天 · logs/signals/</span></h3><div style="max-height:520px;overflow:auto">${sigHtml}</div></div>
+    <div class="grid two section"><div class="card"><h3>自选股信号 <span class="hint">近 10 天 · data/report/signals/</span></h3><div style="max-height:520px;overflow:auto">${sigHtml}</div></div>
     <div class="card"><h3>自选股公告 <span class="hint">近 30 天 · data/announcements/</span></h3><div style="max-height:520px;overflow:auto">${annHtml}</div></div></div>`;
   document.querySelectorAll('th[data-wsort]').forEach(el=>el.onclick=()=>{const k=el.dataset.wsort;if(SW.k===k)SW.asc=!SW.asc;else{SW.k=k;SW.asc=k==='name'}render(true)});
   document.querySelectorAll('tr[data-code]').forEach(el=>el.onclick=()=>{location.hash='#stock/'+el.dataset.code});

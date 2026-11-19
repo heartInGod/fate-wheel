@@ -36,5 +36,6 @@
 ## 环境说明
 - 项目代码与数据在 WSL：`/home/fox/projects/fate-wheel`；WorkBuddy 调度器在 Windows 侧，
   所以每条 prompt 都要求 agent 用 `wsl.exe -e bash -lc` 执行项目命令。
-- 飞书通知依赖 lark-cli（当前未安装）；未装时任务会在日志注明并跳过通知，不影响分析与记录。
+- 通知统一走 `python3 main.py notify`，渠道在 config/notify.json 配置（默认 wechat，走 Windows 侧微信个人号桥接）。
+  桥接未启动时任务会在日志注明并跳过通知，不影响分析与记录；详见 setup/wechat_bridge/README.md。
 - 时区：WorkBuddy RRULE 用系统本地时间（Asia/Shanghai），无需额外设置。

@@ -12,7 +12,7 @@ env/
 # ---- 抓取缓存与快照（可重新拉取，体积 35MB 里占绝大部分）----
 cache/
 
-# ---- 日志与评估记录（含逐笔操作细节，属会话产物）----
+# ---- 技术侧运行日志（耗时/阶段/异常，logs/YYYY-MM-DD/ops.log）----
 logs/
 
 # ---- 运行时报告 ----
@@ -21,19 +21,20 @@ reports/
 # ---- 手工备份 ----
 backups/
 
-# ---- 由脚本生成的看板数据（含持仓隐私，跑 main.py dashboard 可再生）----
-data/derived/dashboard.json
-data/derived/dashboard.js
+# ---- 数据目录整体不追踪：业务报告 data/report/、公告档案、敏感台账、配置、研究数据、看板产物 ----
+# 均为运行产物或本地台账，全部不入库；git 索引已用 git rm --cached 清空 data/。
+data/
 
 # ---- 抓取后自动刷新的档案（脚本维护，非源码）----
 profiles/
 data/announcements/
 
-# ---- macOS / IDE ----
+# ---- macOS / IDE / 工具本地状态 ----
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
+.workbuddy/
 *.swp
 *.swo
 
@@ -42,7 +43,7 @@ data/portfolio/account.csv
 data/portfolio/holdings.csv
 data/portfolio/operations.csv
 
-# ---- 密钥与本地配置（本项目当前没有，预留防止误提交）----
+# ---- 密钥与本地配置 ----
 .env
 .env.*
 *.key
@@ -51,3 +52,7 @@ data/portfolio/operations.csv
 credentials*
 secret*
 config.local.*
+# 通知配置含桥接 token，入库模板为 notify.example.json
+config/notify.json
+setup/wechat_bridge/bridge_config.json
+setup/wechat_bridge/outbox.txt

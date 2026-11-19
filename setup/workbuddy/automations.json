@@ -10,7 +10,7 @@
       "prompt_file": "prompts/premarket.txt",
       "rrule": "FREQ=DAILY;BYHOUR=9;BYMINUTE=0",
       "status": "ACTIVE",
-      "description": "原每日9点持仓分析与飞书提醒；每天 09:00"
+      "description": "原每日9点持仓分析与通知提醒；每天 09:00"
     },
     {
       "name": "【fate-wheel】盘中分析 · 每整点(10/11/13/14/15点)",
@@ -66,7 +66,7 @@
       "prompt_file": "prompts/weekly_1700.txt",
       "rrule": "FREQ=WEEKLY;BYDAY=FR;BYHOUR=17;BYMINUTE=0",
       "status": "ACTIVE",
-      "description": "原每周五长线仓复查与飞书周报；每周五 17:00"
+      "description": "原每周五长线仓复查与通知周报；每周五 17:00"
     }
   ]
 }
