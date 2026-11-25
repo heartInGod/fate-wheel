@@ -1,0 +1,107 @@
+{
+  "_说明": "MCode 没有任务级模型 failover。这 7 条兜底任务绑 custom_provider:mafia-anthropic/claude-opus-5-5，在主力时点之后错峰触发，靠 data/report/yyyyMMdd.md 里本档段落是否已存在来判断主力是否跑成：已存在就立即结束，不存在才补跑对应的 prompts 文件。",
+  "primary_model": "custom_provider:mafia/gpt-6.2-astra",
+  "fallback_model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+  "win_project": "W:\\home\\fox\\projects\\fate-wheel",
+  "task_count": 7,
+  "tasks": [
+    {
+      "cron_name": "【fate-wheel·兜底】盘前分析 09:02",
+      "guards_cron_name": "【fate-wheel】盘前分析 09:00",
+      "schedule": "2 9 * * *",
+      "primary_schedule": "0 9 * * *",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/premarket_0900.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/premarket_0900.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】盘中分析 9:47",
+      "guards_cron_name": "【fate-wheel】盘中分析 9:45",
+      "schedule": "47 9 * * 1-5",
+      "primary_schedule": "45 9 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/intraday_0945.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/intraday_0945.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】盘中 10/13/14 点（错峰 2 分钟）",
+      "guards_cron_name": "【fate-wheel】盘中分析 10/13/14 点每 10 分钟",
+      "schedule": "2,12,22,32,42,52 10,13,14 * * 1-5",
+      "primary_schedule": "0,10,20,30,40,50 10,13,14 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/intraday_10_13_14.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/intraday_10_13_14.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】盘中 11:00-11:30（错峰 2 分钟）",
+      "guards_cron_name": "【fate-wheel】盘中分析 11:00-11:30",
+      "schedule": "2,12,22,32 11 * * 1-5",
+      "primary_schedule": "0,10,20,30 11 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/intraday_11.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/intraday_11.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】收盘分析 15:02",
+      "guards_cron_name": "【fate-wheel】收盘分析 15:00",
+      "schedule": "2 15 * * 1-5",
+      "primary_schedule": "0 15 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/close_1500.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/close_1500.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】收盘建议评估 16:02",
+      "guards_cron_name": "【fate-wheel】收盘建议评估 16:00",
+      "schedule": "2 16 * * 1-5",
+      "primary_schedule": "0 16 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/evaluate_1600.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/evaluate_1600.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel·兜底】长线仓复查周报 周五 17:02",
+      "guards_cron_name": "【fate-wheel】长线仓复查周报 周五 17:00",
+      "schedule": "2 17 * * 5",
+      "primary_schedule": "0 17 * * 5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia-anthropic/claude-opus-5-5",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "fallback/weekly_fri_1700.fallback.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/fallback/weekly_fri_1700.fallback.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明、兜底判断规则和任务正文。"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "_说明": "MiniMax Code 定时任务定义，由 setup/minimax/_generate.py 从 setup/crons.json 派生。MCode 里每条任务的 prompt 只是读取 prompts/ 下对应文件并执行。",
+  "wsl_project": "/home/fox/projects/fate-wheel",
+  "win_project": "W:\\home\\fox\\projects\\fate-wheel",
+  "task_count": 7,
+  "tasks": [
+    {
+      "cron_name": "【fate-wheel】盘前分析 09:00",
+      "source_cron_name": "每日9点持仓分析与通知提醒",
+      "schedule": "0 9 * * *",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/premarket_0900.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/premarket_0900.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】盘中分析 9:45",
+      "source_cron_name": "盘中分析（9:45）",
+      "schedule": "45 9 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/intraday_0945.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/intraday_0945.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】盘中分析 10/13/14 点每 10 分钟",
+      "source_cron_name": "盘中10分钟持仓分析（10/13/14点整段）",
+      "schedule": "0,10,20,30,40,50 10,13,14 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/intraday_10_13_14.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/intraday_10_13_14.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】盘中分析 11:00-11:30",
+      "source_cron_name": "盘中10分钟持仓分析（11:00-11:30）",
+      "schedule": "0,10,20,30 11 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/intraday_11.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/intraday_11.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】收盘分析 15:00",
+      "source_cron_name": "盘中持仓分析（15:00收盘）",
+      "schedule": "0 15 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/close_1500.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/close_1500.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】收盘建议评估 16:00",
+      "source_cron_name": "收盘建议评估（16:00）",
+      "schedule": "0 16 * * 1-5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/evaluate_1600.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/evaluate_1600.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    },
+    {
+      "cron_name": "【fate-wheel】长线仓复查周报 周五 17:00",
+      "source_cron_name": "每周五长线仓复查与通知周报",
+      "schedule": "0 17 * * 5",
+      "timezone": "Asia/Shanghai",
+      "session": {
+        "mode": "new"
+      },
+      "model": "custom_provider:mafia/gpt-6.2-astra",
+      "project": "W:\\home\\fox\\projects\\fate-wheel",
+      "prompt_file": "prompts/weekly_fri_1700.txt",
+      "prompt": "请先用 read 工具完整读取 `setup/minimax/prompts/weekly_fri_1700.txt`（相对工作目录的路径），然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。"
+    }
+  ]
+}

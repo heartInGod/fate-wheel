@@ -55,6 +55,17 @@ SLOT_LIST = [
 
 
 # ----------------------------------------------------------------- 工具
+def _market_regime(snap, params):
+    """大盘资金面分档（宽度闸门），模块不可用时返回 None，不影响信号。"""
+    try:
+        from market_regime import classify
+        reg = classify((snap or {}).get("market_flow") or {},
+                       (params or {}).get("market_regime") or {})
+        return {k: reg.get(k) for k in ("regime", "label", "gate", "evidence", "crosses")}
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _f(v):
     try:
         x = float(v)
@@ -680,6 +691,15 @@ def run(snap, params, record=True, source="engine"):
             if c["type"] in sell_types and not c.get("risk_exit"):
                 c["flags"] = list(c.get("flags") or []) + [f"大盘：{pulse['label']}，勿追跌、优先等反抽"]
 
+    # 宽度闸门：市场宽度 ice/weak 时，只给买类候选加提醒 flag（不改信号、不改阈值）
+    _reg = _market_regime(snap, params)
+    if _reg and _reg.get("gate") and _reg.get("regime") in ("ice", "weak"):
+        buy_types = set((params.get("market_regime") or {}).get(
+            "buy_types", ["add", "t_low", "watch_dip", "watch_break"]))
+        for c in cands:
+            if c["type"] in buy_types:
+                c["flags"] = list(c.get("flags") or []) + [f"大盘：{_reg['label']}，{_reg['gate']}"]
+
     # 二选一分组：只保留回升幅度最大的一只
     groups = {}
     for c in cands:
@@ -749,6 +769,7 @@ def run(snap, params, record=True, source="engine"):
         "date": day, "slot": slot, "snapshot_time": (snap.get("market") or {}).get("now"),
         "source": source, "recorded": record,
         "market_pulse": pulse,
+        "market_regime": _reg,
         "portfolio_risk": core_status.get("portfolio_risk"),
         "core_risk": {"health": core_status.get("health"), "safe_mode": core_status.get("safe_mode"),
                       "items": [{"code": r["code"], "name": r.get("name"), "risk": r.get("risk"),
@@ -833,7 +854,9 @@ def premarket_levels(snap, params):
             "focus": row.get("focus"),
         })
     return {"mode": "premarket", "levels": out, "watch_levels": watch,
-            "market_pulse": classify_pulse(snap, params), "auto": auto_info(auto, params),
+            "market_pulse": classify_pulse(snap, params),
+            "market_regime": _market_regime(snap, params),
+            "auto": auto_info(auto, params),
             "portfolio": {k: v for k, v in pf.items() if k not in ("held", "rows")},
             "core": cv.status(params, snap, day_of(snap)),
             "open_trades": open_trades(snap, params),

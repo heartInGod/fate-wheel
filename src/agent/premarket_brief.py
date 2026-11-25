@@ -207,6 +207,27 @@ def build(snap, res, th, news_n=NEWS_N, full=False):
     pn = pulse.get("policy_news") or snap.get("policy_news") or []
     A(f"- 政策/国家队快讯 {len(pn)} 条" + (f"：{_clip(pn[0] if isinstance(pn[0], str) else pn[0].get('text'), 140)}" if pn else ""))
     A("")
+    # 大盘资金面：读 snapshot 里的 market_flow，用 core/market_regime 分档
+    from core import market_regime as _mr
+    mf = snap.get("market_flow") or {}
+    reg = _mr.classify(mf)
+    A("## 大盘资金面")
+    A(f"- 档位：**{reg.get('label')}**（{reg.get('regime')}）")
+    for e in reg.get("evidence") or []:
+        A(f"  - {e}")
+    for c in reg.get("crosses") or []:
+        A(f"  - 交叉验证：{c}")
+    ext = mf.get("external") or {}
+    es = "、".join(f"{k}={v}" for k, v in (("美元离岸人民币", ext.get("usdcnh")),
+                   ("伦敦金", ext.get("gold")), ("WTI原油", ext.get("oil")),
+                   ("纳指100", ext.get("nasdaq100"))) if v is not None)
+    if es:
+        A(f"  - 外盘：{es}")
+    if reg.get("gate"):
+        A(f"- 闸门提醒：{reg['gate']}")
+    if mf.get("errors"):
+        A(f"  - 数据缺失 {len(mf['errors'])} 项（主力资金20日累计等缺口用当日 WebSearch 补，勿臆造）")
+    A("")
 
     # ---------- 长线仓 ----------
     cs = core.get("summary") or {}
