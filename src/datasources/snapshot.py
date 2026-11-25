@@ -190,6 +190,10 @@ def snapshot(mode="intraday"):
             errors.extend(f"etf_shares {e}" for e in sh.get("errors") or [])
     out["policy_news"] = _safe(errors, "policy_news", news.policy_news, _news_since(mode, out.get("market")),
                                25 if mode == "premarket" else 3)
+    # 大盘资金面（宽度/成交额/两融/主力/外盘）：读当天缓存，快照不强制重取
+    from . import market_flow as _mf
+    with _timed("block.market_flow"):
+        out["market_flow"] = _safe(errors, "market_flow", _mf.collect, False)
     out["errors"] = errors
     out["generated_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with _timed("block.cache_write"):

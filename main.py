@@ -27,6 +27,7 @@
 测试位于 src/tests/，前端资源位于 web/。
 数据文件归档校验：python3 main.py datamul check
 经验文档（data/experience/）：python3 main.py experience list|current|path|cleanup
+大盘资金面（宽度/成交额/主力/两融/外盘）：python3 main.py market|market raw|market refresh
 """
 import os
 import runpy
@@ -63,6 +64,7 @@ COMMANDS = {
     "fetch":       ("src/datasources/fetch_data.py", "统一数据获取入口"),
     "datamul":     ("src/common/datamul.py",        "数据归档路径解析与校验"),
     "experience":  ("src/common/experience_store.py", "经验文档路径与30天滚动清理"),
+    "market":      ("src/agent/market_cli.py",       "大盘资金面：市场级指标采集与宽度分档"),
     # 持仓前提
     "thesis":      ("src/core/thesis_cli.py",       "维护持仓定位前提"),
     # Agent 定时任务辅助

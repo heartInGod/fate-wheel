@@ -92,10 +92,31 @@
 
 ```bash
 cd fate-wheel
-./setup.sh                                          # 一次性配置
+./setup.sh                                          # 一次性配置（含派生 setup/minimax/ 定时任务定义）
 python3 main.py fetch snapshot mode=intraday        # 手动验证数据
 python3 main.py signals --no-record               # 预览候选信号
+python3 main.py market                             # 大盘资金面（宽度/成交额/主力/两融/外盘 + 冰点闸门）
 fate wheel                                          # 生成数据并打开看板（也可直接双击根目录 dashboard.html）
 ```
 
 > ⚠️ 所有提醒仅供个人研究参考，不构成投资建议；系统不自动下单。
+
+## 六、定时任务（MiniMax Code）
+
+7 条定时任务托管在 **MiniMax Code 原生定时任务（cron）**，定义在 `setup/minimax/`：
+
+| 时间 | 任务 | cron 表达式 |
+|---|---|---|
+| 每天 09:00 | 盘前分析（含周末，prompt 内判断休市） | `0 9 * * *` |
+| 工作日 09:45 | 盘中分析 | `45 9 * * 1-5` |
+| 工作日 10/13/14 点每 10 分钟 | 盘中分析 | `0,10,20,30,40,50 10,13,14 * * 1-5` |
+| 工作日 11:00–11:30 | 盘中分析 | `0,10,20,30 11 * * 1-5` |
+| 工作日 15:00 | 收盘分析 + 收盘小结 | `0 15 * * 1-5` |
+| 工作日 16:00 | 收盘建议评估 + 参数校准 + 经验更新 | `0 16 * * 1-5` |
+| 周五 17:00 | 长线仓复查 + 政策周报 | `0 17 * * 5` |
+
+- `setup/crons.json` 是 prompt 的唯一来源；改完跑 `python3 setup/minimax/_generate.py` 重新派生
+  `setup/minimax/tasks.json` 与 `setup/minimax/prompts/*.txt`，MCode 里的任务下次运行自动用新 prompt（无需重建任务）。
+- MCode 跑在 Windows、项目在 WSL，所有 prompt 都带统一的「运行环境」头，命令经 `wsl.exe -e bash -lc` 执行。
+- 只有改**调度时间或模型**才需要在 MCode 里更新对应任务（详见 `setup/minimax/README.md`）。
+

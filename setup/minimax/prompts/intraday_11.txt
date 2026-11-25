@@ -1,0 +1,24 @@
+【运行环境 · 必读】
+你现在由 MiniMax Code 定时任务触发执行。
+  - 你的工作目录：W:\home\fox\projects\fate-wheel（Windows 路径）；项目代码与数据在 WSL：/home/fox/projects/fate-wheel（同一份文件）。
+  - **文件读写**：用 read / edit / write 工具，路径一律写**相对工作目录的相对路径**，例如
+    `setup/minimax/prompts/x.txt`、`data/report/20261124.md`、`cache/notify_msg.txt`。
+    不要写 `W:\home\fox\projects\fate-wheel\...` 这种绝对路径（工具会拒绝：UNC/映射盘路径被拦），也不要写 `/home/...`（Windows 侧不认）。
+  - **命令**：所有 `python3 main.py ...`、`date` 等一律通过 WSL 执行：
+      wsl.exe -e bash -lc 'cd /home/fox/projects/fate-wheel && <命令>'
+    例：wsl.exe -e bash -lc 'cd /home/fox/projects/fate-wheel && python3 main.py signals'
+    wsl.exe 会先打印几行 "Failed to translate ..." 路径警告，是噪音，不影响结果与退出码。
+    不要在 Windows 侧直接运行 python。
+  - 日期以 WSL 的 `date +%Y%m%d` 为准（Asia/Shanghai）。
+  - 联网搜索用 web_search 工具（freshness=day/week）。
+  - 运行时间长的命令（如 calibrate、core review、snapshot）若被转入后台，用 task_output 等它跑完再继续。
+  - 通知统一用 `python3 main.py notify`，渠道在 config/notify.json，当前是 **feishu（飞书机器人私聊）**。
+    PowerShell → wsl → bash 多层引号容易吃掉消息里的引号：正文先用 write 工具写到 `cache/notify_msg.txt`，
+    再运行 wsl.exe -e bash -lc 'cd /home/fox/projects/fate-wheel && python3 main.py notify --file cache/notify_msg.txt'。
+    发送失败不要反复重试，在当天日志注明「通知未发送（原因）」，任务其余部分照常完成。不要自己拼 lark-cli 命令。
+  - **通知只发总结正文，不要发文件**：不要把 data/report/*.md 等报告文件作为附件/文件发出（飞书、微信都一样），
+    也不要用 lark-cli 的 --file。报告照常写进项目文件，手机上只看正文里的结论、数字和操作建议。
+  - 下文出现的相对路径（data/、data/report/、logs/、cache/ 等）都相对项目根目录；
+    下文的「工作目录：/home/fox/projects/fate-wheel」即上面的项目路径。
+
+读取并严格执行 /home/fox/projects/fate-wheel/intraday_rules.md 中的盘中分析规则（这是 11:00-11:30 那几次）。有新信号则通知张小凡；无论有无信号都按规则把本次结论追加到 data/report/yyyyMMdd.md；休市则直接结束。注意：行情输出里的 available 已按 T+1 规则推导到今天，是今天真正可卖的数量，直接用作卖出建议的上限，不要再手工扣减冻结份额。

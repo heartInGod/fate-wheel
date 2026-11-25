@@ -8,8 +8,8 @@
 #   ./setup.sh                    基础配置（检查环境、建目录、修正路径、安装 fate 命令、生成定时任务指令）
 #   ./setup.sh --check            另外跑一次盘中 snapshot + 生成看板，验证数据源可用
 #   ./setup.sh --test-notify     另外给自己发一条通知测试消息（走当前配置的渠道）
-#   ./setup.sh --channel wechat  把通知渠道切成 wechat（默认）或 feishu
-#   ./setup.sh --open-id ou_xxx  飞书渠道的接收人 open_id（切到飞书时才需要）
+#   ./setup.sh --channel feishu  把通知渠道切成 feishu（当前默认）或 wechat
+#   ./setup.sh --open-id ou_xxx  飞书渠道的接收人 open_id（注意 open_id 是应用级的，换应用要重取）
 #   ./setup.sh --install-deps    缺 python3 / node / lark-cli 时用系统包管理器自动安装
 #
 # 脚本可重复运行，已有的数据文件（data/portfolio/*.csv、data/report/、logs/ 等）不会被覆盖。
@@ -275,73 +275,70 @@ if [ $TEST_NOTIFY = 1 ]; then
   fi
 fi
 
-# ---------------------------------------------------------------- 6. 定时任务（WorkBuddy）
-step "6. 定时任务（在 WorkBuddy 中安装）"
-OUT="$PROJECT/setup/WORKBUDDY_SETUP_PROMPT.md"
+# ---------------------------------------------------------------- 6. 定时任务（MiniMax Code）
+step "6. 定时任务（在 MiniMax Code 中安装）"
+OUT="$PROJECT/setup/MINIMAX_SETUP_PROMPT.md"
 
-# 先确保 WorkBuddy 任务定义已从 crons.json 派生（幂等：已存在则跳过生成）
-if [ ! -f "$PROJECT/setup/workbuddy/automations.json" ]; then
-  python3 "$PROJECT/setup/workbuddy/_generate.py" >/dev/null 2>&1 || warn "workbuddy 任务定义生成失败，请检查 setup/workbuddy/_generate.py"
+# 先确保 MCode 任务定义已从 crons.json 派生（幂等：重跑会覆盖生成物，prompt 始终与 crons.json 一致）
+if [ -f "$PROJECT/setup/minimax/_generate.py" ]; then
+  python3 "$PROJECT/setup/minimax/_generate.py" >/dev/null 2>&1 \
+    && ok "已从 setup/crons.json 派生 setup/minimax/tasks.json 与 prompts/" \
+    || warn "MCode 任务定义生成失败，请检查 setup/minimax/_generate.py"
+else
+  fail "缺少 setup/minimax/_generate.py，无法生成定时任务定义"
 fi
 
 python3 - "$PROJECT" > "$OUT" <<'PY'
 import json, sys, os, re
 project = sys.argv[1]
-# WorkBuddy 调度器在 Windows 侧，看项目用的是 W:/ 挂载路径（不是 WSL 的 \\wsl.localhost 路径）。
-# 从 WSL 路径 /home/fox/... 推出 WorkBuddy 侧的 W:/home/fox/...：优先用环境变量覆盖，
-# 否则按常见布局把 /home/... 映射为 W:/home/...。
+# MCode 调度器在 Windows 侧，看项目用的是 W:/ 挂载路径。
 win_project = os.environ.get("FATE_WIN_PROJECT", "")
 if not win_project:
     m = re.match(r"^(/home/[^/]+/.*)$", project)
     win_project = "W:" + m.group(1) if m else project
-d = json.load(open(f"{project}/setup/workbuddy/automations.json", encoding="utf-8"))
+d = json.load(open(f"{project}/setup/minimax/tasks.json", encoding="utf-8"))
 rows = "\n".join(
-    f"  - {a['name']}: `{a['rrule']}`"
-    for a in d["automations"]
+    f"  - {a['cron_name']}：`{a['schedule']}`（{a['timezone']}，project={a['project']}，model={a['model']}）"
+    for a in d["tasks"]
 )
-print(f"""请在 WorkBuddy 里为持仓盯盘项目重建定时任务。
+print(f"""请在 MiniMax Code 里为持仓盯盘项目重建定时任务（cron）。
 
 ## 背景
-项目原先把定时任务托管在 MiniMax Code，现 MiniMax Code 已停用，改为 WorkBuddy 原生定时任务（automation）。
+项目原先把定时任务托管在 WorkBuddy，现改为 MiniMax Code 原生定时任务。
 任务定义与逐条 prompt 已在项目内生成好，不要自己重新设计调度；fate-wheel 之外的任务一律不要动。
 
-## 要创建的任务（共 {d['automation_count']} 条，全部 ACTIVE）
+## 要创建的任务（共 {d['task_count']} 条，全部 enabled）
 {rows}
 
-说明：WorkBuddy 的 RRULE 不支持一条规则里写多个时点（BYHOUR/BYMINUTE 只能是单个整数），
-所以原来"每 10 分钟、覆盖多个小时"的盘中任务，按"分钟偏移"合并成了 6 条（:00/:10/:20/:30/:40/:50），
-每条每小时触发一次，由 prompt 里的【时点判断】还原原来只在交易时段、每 10 分钟分析的节奏。
-15:00 收盘并入 :00 那一条（按 intraday_rules.md 第 7 条写收盘小结）。
+说明：MCode 的 cron 支持标准 5 段表达式（含逗号列表），所以调度直接用回原始写法，
+不需要 WorkBuddy 时代「每小时触发 + prompt 内判断小时」的绕法。
+每条任务的 prompt 只是一句「读取 setup/minimax/prompts/xxx.txt 并严格执行」，
+业务步骤都在那个文件里——以后改 prompt 只要重跑 setup/minimax/_generate.py，不必重建任务。
 
 ## 执行步骤
-1. 先用 automation 列表工具查看现有任务；名称以「【fate-wheel】」开头的旧任务全部删除，避免重复运行。
-   注意只删 fate-wheel 前缀的，不要动其它任务。
-2. 读取 `{win_project}/setup/workbuddy/automations.json`，对 automations 里的每一条：
-   - 用 automation 创建工具（recurring）创建，参数取文件里的 `name`、`rrule`、`status`；
-   - `prompt` 由你现场生成，模板固定为下面这段（把 {{文件}} 换成该条的 `prompt_file`）：
-
-     请先用 Read 工具完整读取 `{win_project}/setup/workbuddy/prompts/{{文件}}`，
-     然后严格逐条执行其中全部指令，不得省略。该文件已包含运行环境说明和任务正文。
-
-   - 工作目录设为 `{win_project}`（Windows 路径）。
-3. 创建完核对：共 {d['automation_count']} 条、都是 ACTIVE，并列出各条下次运行时间。
+1. 先用 cron_read（view=list）查看现有任务；cronName 以「【fate-wheel】」开头的旧任务全部删除，
+   避免重复运行。注意只删 fate-wheel 前缀的，不要动其它任务。
+2. 读取 `{win_project}/setup/minimax/tasks.json`，对 tasks 里的每一条调用 cron_create：
+   - cron_name 取 `cron_name`，schedule 取 `schedule`，timezone 取 `timezone`；
+   - model 取 `model`；project 取 `project`（Windows 路径）；
+   - session 取 `{{"mode": "new"}}`；agent_name 用 `me`；
+   - prompt 直接用文件里的 `prompt` 字段（它已指向该条的 `prompt_file`）。
+3. 创建完核对：共 {d['task_count']} 条、都是 enabled，并列出各条 nextRun。
 
 ## 环境说明
-- 项目代码与数据在 WSL：`{d['wsl_project']}`；WorkBuddy 调度器在 Windows 侧，
+- 项目代码与数据在 WSL：`{d['wsl_project']}`；MCode 调度器在 Windows 侧，
   所以每条 prompt 都要求 agent 用 `wsl.exe -e bash -lc` 执行项目命令。
-- 通知统一走 `python3 main.py notify`，渠道在 config/notify.json 配置（默认 wechat，走 Windows 侧微信个人号桥接）。
-  桥接未启动时任务会在日志注明并跳过通知，不影响分析与记录；详见 setup/wechat_bridge/README.md。
-- 时区：WorkBuddy RRULE 用系统本地时间（Asia/Shanghai），无需额外设置。""")
+- 通知统一走 `python3 main.py notify`，渠道在 config/notify.json（当前 feishu，走 lark-cli 机器人私聊；
+  需要 WSL 里装好 lark-cli 并配置应用凭据）。切回微信见 setup/wechat_bridge/README.md。
+- 时区：任务按 `timezone` 字段（Asia/Shanghai）触发。""")
 PY
-ok "已生成 setup/WORKBUDDY_SETUP_PROMPT.md"
-if command -v pbcopy >/dev/null 2>&1; then
-  pbcopy < "$OUT" && ok "指令已复制到剪贴板"
-elif command -v clip.exe >/dev/null 2>&1; then
+ok "已生成 setup/MINIMAX_SETUP_PROMPT.md"
+if command -v clip.exe >/dev/null 2>&1; then
   clip.exe < "$OUT" && ok "指令已复制到 Windows 剪贴板"
-elif command -v xclip >/dev/null 2>&1; then
-  xclip -selection clipboard < "$OUT" && ok "指令已复制到剪贴板（xclip）"
+elif command -v pbcopy >/dev/null 2>&1; then
+  pbcopy < "$OUT" && ok "指令已复制到剪贴板"
 fi
-echo "  → 在 WorkBuddy 里新建会话，粘贴下面这段指令（或直接用 WORKBUDDY_SETUP_PROMPT.md）："
+echo "  → 在 MiniMax Code 里新建会话，粘贴下面这段指令（或直接用 MINIMAX_SETUP_PROMPT.md）："
 echo "  ------------------------------------------------------------"
 sed 's/^/  /' "$OUT"
 echo "  ------------------------------------------------------------"

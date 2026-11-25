@@ -205,6 +205,33 @@ python3 main.py test                                   # 引擎/记录/评估/EV
 | 2025-04-08 | 5~14 倍 | +6.0% |
 | 2024-02-07 | 约 3 倍 | +7.1% |
 | 平常交易日 | 约 1 倍 | ±1% |
+
+## 大盘资金面（市场级宽度与资金，只作背景闸门）
+
+市场整体视角（区别于 `capital.py` 的个股视角、`market_pulse.py` 的护盘事件视角）。**只给信号加提醒 flag，不改信号、不改阈值**；因果叙事由模型用 WebSearch 补，脚本只给数值与证据。
+
+| 文件 / 字段 | 作用 |
+|---|---|
+| `src/datasources/market_flow.py` `collect()` | 并发采集，缓存 `cache/market_flow_YYYYMMDD.json`（当天复用，`market refresh` 强制重取）。单项失败记 errors 不阻断 |
+| `breadth()` | 涨跌/平家数与占比：主源新浪 `Market_Center` 降序分页二分找涨跌分界（约 10s，全市场 5500+ 只）；降级东财 `push2 ulist.np` f104/f105/f106。涨跌停用东财 `push2ex` 涨跌停池 `data.tc`（独立域名，需用专用 ut） |
+| `turnover()` | 两市成交额：腾讯简版 `s_sh000001/s_sz399001` 第 8 字段（万元→亿元）；分位用腾讯指数日 K（sh000001，第 6 字段成交量）近 250 日排序定位 |
+| `main_flow()` | 沪深指数主力净流入：东财 `push2his fflow/kline` 的 f52（当日、近 20 日累计，亿元）。**该接口对 Referer/频率敏感，易被临时 WAF；失败时留空，由 prompt 的 WebSearch 补，绝不臆造** |
+| `margin()` | 市场融资余额与连降天数：东财数据中心 `RPTA_WZRQ_LSHJ`（市场融资历史，`RZYE` 字段，T+1） |
+| `external()` | 美元离岸人民币、伦敦金、WTI 原油、纳指100：新浪 `hq.sinajs.cn`（gbk，需 Referer） |
+| 央行净投放 | 无稳定公开接口，留空；prompt 用 WebSearch 补「央行公开市场净投放」，标注来源 |
+| `src/core/market_regime.py` `classify()` | 分档 `ice/weak/normal/strong/none` + 证据链 + 交叉验证 + 闸门提醒文案。阈值在 `rules_params.json` 的 `market_regime` 段 |
+| `src/agent/market_cli.py` | `python3 main.py market`（摘要）/ `market raw`（原始 JSON）/ `market refresh`（强制重采） |
+| 快照 `market_flow` | 两种模式都写读当天缓存；`premarket` 摘要在「大盘资金面」节输出；`signals` 输出 `market_regime` 段 |
+| `signals_engine` | `ice/weak` 时给买入类候选（add/t_low/watch_dip/watch_break）加 flag「大盘：…，反弹按存量轮动对待，止损不加宽」；卖出类仍由 `market_pulse` 负责 |
+
+分档口径（可配置）：
+
+- **ice 冰点**：上涨占比 ≤15% 且涨跌停比 ≤0.8，且（成交额分位 ≤20% 或主力 20 日累计净流出 ≤-500 亿）
+- **weak 偏弱**：上涨占比 ≤35% 或涨跌停比 ≤1.0
+- **strong 强势**：上涨占比 ≥65% 且成交额分位 ≥60%
+- **normal**：其余；宽度数据缺失为 none（闸门不生效）
+
+交叉验证用「成交额分位」与「主力资金 20 日累计」同向确认：两者共振低位/净流出 = 存量资金不足；共振高位/净流入 = 增量入场。风险判断以宽度（上涨家数占比、涨跌停比）为核心，成交额与主力资金为交叉验证——**宽度修复前指数微涨不算市场转健康**。
 | 2026-11-02（小盘反弹） | 约 0.95（中小盘 2.25） | +4.0%，近 5 日累计 +11%（中证500/1000ETF +15%~+25%） |
 
 ## 休眠兜底（定时采集 + 错过时段补跑）

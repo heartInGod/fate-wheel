@@ -1,6 +1,10 @@
-# WorkBuddy 定时任务定义
+# WorkBuddy 定时任务定义（已弃用）
 
- fate-wheel 的 9 条定时任务已托管在 **WorkBuddy 原生定时任务（automation）**，不再依赖 MiniMax Code。
+> ⚠️ **已迁移到 MiniMax Code**（`setup/minimax/`，2026-11-24）。本目录仅作历史留档，`setup.sh` 不再使用它。
+> 如果 WorkBuddy 里还有名称以「【fate-wheel】」开头的 automation，**请全部删除**，否则会和 MCode 的
+> 定时任务重复执行同一份分析。
+
+ fate-wheel 的 9 条定时任务曾托管在 **WorkBuddy 原生定时任务（automation）**，不再依赖 MiniMax Code。
 
 ## 目录内容
 
